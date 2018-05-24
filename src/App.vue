@@ -1801,6 +1801,7 @@ export default {
             this.myToast("网络错误,请重试!");
           });
       }
+      //<input @change="upLoad($event)" type="file"/>
     },
     //排序点击默认排序
     defaultSort(e) {
