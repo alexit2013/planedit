@@ -1,0 +1,18 @@
+body{
+  font-family: tahoma,"微软雅黑","Microsoft YaHei",SimHei,"Helvetica Neue",Helvetica,Arial,sans-serif!important;
+  background-color: #ecf0f5;
+}
+ul,ol{
+  list-style: none;
+}
+.lf{
+  float: left;
+}
+.rf{
+  float:right;
+}
+.clear{
+  display: table;
+  content:'';
+  clear:both;
+}
