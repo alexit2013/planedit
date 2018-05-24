@@ -82,16 +82,16 @@
           <!-- 左侧勾选排序 -->
           <div class="check col-xs-12 col-md-6" v-if="list">
             <p>
-              <input type="checkbox" @change="changeShowCanBuy($event)" v-model="showCanBuy">仅显示可采<span>{{list.data.CountPurchase}}</span>
+              <input id="checkscb" type="checkbox" @change="changeShowCanBuy($event)" v-model="showCanBuy"><label for="checkscb">仅显示可采</label><span>{{list.data.CountPurchase}}</span>
             </p>
             <p>
-              <input type="checkbox" @change="changeOverStock($event)" v-model="OverStock" >采购超库存 <span>{{list.data.CountPurchaseSock}}</span>
+              <input id="checkckc" type="checkbox" @change="changeOverStock($event)" v-model="OverStock" ><label for="checkckc">采购超库存</label><span>{{list.data.CountPurchaseSock}}</span>
             </p>
             <p>
-              <input type="checkbox" @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq">近效期(1年以内) <span>{{list.data.CountSpxq}}</span>
+              <input id="checkjxq" type="checkbox" @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq"><label for="checkjxq">近效期(1年以内)</label> <span>{{list.data.CountSpxq}}</span>
             </p>
             <p>
-              <input type="checkbox" @change="changePriceChange($event)"  v-model="PriceChange">价格变动 <span>{{list.data.CountPriceChange}}</span>
+              <input id="checkjg" type="checkbox" @change="changePriceChange($event)"  v-model="PriceChange"><label for="checkjg">价格变动</label> <span>{{list.data.CountPriceChange}}</span>
             </p>
             <p>
               <button class="btn btn-default" data-toggle="modal" data-target="#cg_filter">
@@ -2507,6 +2507,9 @@ export default {
         > p {
           display: inline-block;
           margin-right: 5px;
+          >label{
+            font-weight: normal;
+          }
           > span {
             padding: 0 6px;
             background-color: #d2d6de;
