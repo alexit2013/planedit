@@ -127,9 +127,9 @@
             <button data-toggle="modal" data-target="#cg_preference"  class="btn btn-primary glyphicon glyphicon-cog">采购偏好</button>
             <button @click="chooseLow" class="btn btn-primary glyphicon glyphicon-check">全选最低价</button>
             <button @click="addStore" data-toggle="modal"  data-target="#addStore" class="btn btn-primary glyphicon glyphicon-plus">添加匹配店铺</button>
-            <button class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
+            <span class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
               <input @change="upLoad($event)" type="file"/>
-            </button>
+            </span>
           </div>
         </div>
         <!-- 采购详情表格 -->
@@ -562,6 +562,7 @@ export default {
       list: null,
       userList:null,
       isLogin:false,
+      modalCompanyChange:false,   //打开模态框中添加或删除店铺是否点击
     };
   },
   created() {
@@ -576,24 +577,11 @@ export default {
       }
     }).catch(err=>{
       this.myConfirm('网络错误,无法获得登录信息!');
+      location.href="/home/index";
     })
 
     this.id = location.search.slice(4);
     this.getData();
-
-    //默认只显示可采
-    // this.productList=this.list.data.productList.filter((ele,i)=>{
-    //   var res=ele.sellerJson1.some((item,idx)=>{
-    //     return item!=undefined;
-    //   });
-    //   return res;
-    // });
-    // this.productList.forEach((ele,i)=>{
-    //   ele.BranchesJson=JSON.parse(ele.BranchesJson);
-    // })
-    //this.purchasingCompanyList=this.list.data.purchasingCompanyList;
-
-    //console.log(this.list);
   },
   mounted() {
     //已选中商品右上角图标切换
@@ -1036,7 +1024,7 @@ export default {
           if (res.data.success) {
             this.list = res.data;
             this.showLoading = false;
-            console.log(this.list);
+            //console.log(this.list);
             //如果价格或者店铺数量发生变化,重新请求数据
             if (res.data.data.isCompanyChange || res.data.data.isChange) {
               this.showLoading = true;
@@ -1777,7 +1765,7 @@ export default {
     //导入计划
     upLoad(e) {
       //console.log(e.target.files)
-      var reg = /\.xl(s[xmb]|t[xm]|am)$/;
+      var reg = /\.xl(s[xmb]?|t[xm]|am)$/;
       var fileName = e.target.files[0].name;
       var index = fileName.lastIndexOf("."); //最后一个点出现的位置
       var hz = fileName.slice(index); //后缀名
@@ -2165,6 +2153,8 @@ export default {
     },
     //模态框中添加店铺匹配
     addCompany(key) {
+      this.modalCompanyChange=true;  //点击了删除或添加匹配
+      this.showLoading=true;
       var params = new URLSearchParams();
       params.append("storeid", this.CompanyList[key].venderid);
       this.CompanyList[key].IsVendor = true;
@@ -2173,6 +2163,7 @@ export default {
         .then(res => {
           if (!res.data.success) {
             //添加失败
+            this.showLoading=false;
             this.CompanyList[key].IsVendor = false;
             // this.myToast(res.data.info);
             if(res.data.info=="请先登录"){
@@ -2180,15 +2171,18 @@ export default {
             }else{
               this.myToast(res.data.info);
             }
+            
           } else {
+            
             //添加成功,重新计算采购计划请求数据
             var params = new URLSearchParams();
             params.append("id", this.id);
             this.$http
               .post("/WebApi/ChangePurchasePlan", params)
               .then(res => {
+                this.showLoading=false;
                 if (res.data.success) {
-                  this.list = res.data;
+                  //this.list = res.data;
                 } else {
                   if(res.data.info=="请先登录"){
                     $('.loginConfirm').fadeIn();
@@ -2198,17 +2192,21 @@ export default {
                 }
               })
               .catch(err => {
+                this.showLoading=false;
                 this.myToast("网络错误,请刷新页面重新生成采购计划!");
               });
           }
         })
         .catch(err => {
+          this.showLoading=false;
           this.CompanyList[key].IsVendor = false;
           this.myToast("网络错误,请重试!");
         });
     },
     //模态框中删除店铺匹配
     removeCompany(key) {
+      this.showLoading=true;
+      this.modalCompanyChange=true;  //点击了删除或添加匹配
       var params = new URLSearchParams();
       params.append("storeid", this.CompanyList[key].venderid);
       this.CompanyList[key].IsVendor = false;
@@ -2217,6 +2215,7 @@ export default {
         .post("/WebApi/VendorDel", params)
         .then(res => {
           if (!res.data.success) {
+            this.showLoading=false;
             this.CompanyList[key].IsVendor = true;
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
@@ -2225,30 +2224,38 @@ export default {
             }
           } else {
             //删除成功,重新计算采购计划请求数据
+            
             var params = new URLSearchParams();
             params.append("id", this.id);
             this.$http
               .post("/WebApi/ChangePurchasePlan", params)
               .then(res => {
+                this.showLoading=false;
                 if (res.data.success) {
-                  this.list = res.data;
+                  //this.list = res.data;
                 } else {
                   this.myToast(res.data.info);
                 }
               })
               .catch(err => {
+                this.showLoading=false;
                 this.myToast("网络错误,请刷新页面重新生成采购计划!");
               });
           }
         })
         .catch(err => {
+          this.showLoading=false;
           this.CompanyList[key].IsVendor = true;
           this.myToast("网络错误,请重试!");
         });
     },
     //关闭匹配店铺模态框
     closeAddStore() {
-      this.getData();
+      if(this.modalCompanyChange){
+        this.getData();
+      }
+      this.modalCompanyChange=false; //恢复初始状态
+      
     },
     //点击提交订单按钮
     submitOrder() {
@@ -2915,7 +2922,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 888;
+  z-index: 1100;
   background-color: rgba(0, 0, 0, 0.15);
   > img {
     position: absolute;
@@ -2927,6 +2934,9 @@ export default {
   }
 }
 #addStore {
+  >.modal-dialog{
+    width:1000px !important;
+  }
   table {
     td,
     th {
@@ -2945,7 +2955,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 999;
+  z-index: 1800;
   background-color: rgba(0, 0, 0, 0.35);
   > .content {
     position: absolute;
@@ -2972,7 +2982,7 @@ export default {
 .myToast {
   z-index: 1800;
   position: fixed;
-  width: 240px;
+  width: 256px;
   height: 60px;
   line-height: 60px;
   border-radius: 10px;
