@@ -2963,7 +2963,7 @@ export default {
   background-color: rgba(0, 0, 0, 0.35);
   > .content {
     position: absolute;
-    width: 360px;
+    width: 400px;
     height: 152px;
     padding: 10px;
     left: 0;
