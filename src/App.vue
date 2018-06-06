@@ -220,7 +220,7 @@
                       <span class="label label-warning">议</span>
                       {{item.bargain}}
                     </p>
-                    <span class="price" style="color:#5cb85c">{{item.price.toFixed(2)}}</span>
+                    <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
                     <div class="info">
                       <p>库存 {{item.stock}}</p>
                       <p>效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
@@ -400,7 +400,7 @@
             <button type="button" @click="closeAddStore" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title" id="myModalLabel">添加匹配店铺</h4>
           </div>
-          <div class="modal-body">
+          <div class="modal-body" v-if="CompanyList">
             <div class="form-inline" style="margin-bottom:20px;">
                <div class="form-group">
                     <label for="">供应商</label>
@@ -418,8 +418,8 @@
                   <th>操作</th>
                 </tr>  
               </thead>
-              <tbody v-if="CompanyList.length>0">
-                <tr v-for="(item,key) in CompanyList" :key="key">
+              <tbody >
+                <tr v-for="(item,key) in CompanyList.VendorList" :key="key">
                   <td>{{item.venderename}}</td>
                   <td>{{item.pcount}}</td>
                   <td>
@@ -429,6 +429,11 @@
                 </tr>
               </tbody>
             </table>
+            <nav aria-label="Page navigation" class="text-right" >
+              <ul class="pagination">
+                <li v-for="(val,index) in CompanyList.pageCountList" :key="index" :class="{active:CompanyList.page==val}"><a @click="changePage(val)" href="javascript:;">{{val}}</a></li>
+              </ul>
+            </nav>
           </div>
           <div class="modal-footer">
             <!-- <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -497,8 +502,8 @@
         </h4>
         <p class="info">重置所有操作,是否继续?</P>
         <p class="text-right">
-          <button @click="cancelRefresh" class="btn btn-primary">取消</button>
-          <button @click="goRefresh"  class="btn btn-default">确定</button>
+          <button @click="cancelRefresh" class="btn btn-default">取消</button>
+          <button @click="goRefresh"  class="btn btn-primary">确定</button>
         </p>
       </div>
     </div>
@@ -981,19 +986,34 @@ export default {
     //页面滚动时让fixed_top固定在顶部
     var $fixed_top = $(".fixed_top");
     var offsetTop = $fixed_top.offset().top;
-    $(window).scroll(function() {
-      //console.log('正在滚动')
+    var left=$fixed_top.offset().left-8;//顶部固定条距离窗口左侧的距离
+    var scrollLeft=0;
+    $(window).scroll(function(e) {
+      
+      //console.log('正在滚动');
+      scrollLeft=$(this).scrollLeft();
+      //
       if ($(this).scrollTop() > offsetTop) {
+        
         $fixed_top.css({
           position: "fixed",
-          top: 0
+          top: 0,
+          left:left-scrollLeft
         });
+          
       } else {
         $fixed_top.css({
           position: "static"
         });
       }
     });
+
+    //如果供应商大于6加,那么设置第二个td宽度为260px;
+    // console.log(this.list);
+    // if(this.list.purchasingCompanyList.length>6){
+    //   $('td:eq(1)').addClass('fixWidth');
+    // }
+
   },
   updated() {
     //启用tooltip
@@ -1003,6 +1023,15 @@ export default {
       trigger: "hover",
       container: "body"
     });
+     //如果供应商大于6加,那么设置第二个td宽度为260px;
+    //console.log(this.list);
+    if(this.list && this.list.data.purchasingCompanyList.length>6){
+      $('td:eq(1)').addClass('fixWidth');
+      $('th:eq(1)').addClass('fixWidth');
+    }else if(this.list && this.list.data.purchasingCompanyList.length<=6){
+      $('td:eq(1)').removeClass('fixWidth');
+      $('th:eq(1)').removeClass('fixWidth');
+    }
   },
   methods: {
     //请求数据函数
@@ -1024,7 +1053,7 @@ export default {
           if (res.data.success) {
             this.list = res.data;
             this.showLoading = false;
-            //console.log(this.list);
+             //console.log(this.list);
             //如果价格或者店铺数量发生变化,重新请求数据
             if (res.data.data.isCompanyChange || res.data.data.isChange) {
               this.showLoading = true;
@@ -1673,6 +1702,70 @@ export default {
           }
         }
 
+        //没有上次勾选的商品
+        var IsMatchJxq=this.list.data.IsMatchJxq,
+            IsMatchNotStock=this.list.data.IsMatchNotStock;
+        
+        if(productIndex==null){
+          //console.log("没有上次勾选的商品")
+          for(var k=0,minPrice=999999;k<len;k++){
+            if(this.productList[ind].sellerJson1[k] && this.productList[ind].sellerJson1[k].canSelect){ 
+              //console.log('有商品')
+              if(IsMatchJxq && IsMatchNotStock && this.productList[ind].sellerJson1[k].price<minPrice) {
+                minPrice=this.productList[ind].sellerJson1[k].price;
+                productIndex = k;
+                price = this.productList[ind].sellerJson1[k].price;
+                stock = this.productList[ind].sellerJson1[k].stock;
+              }else if(!IsMatchJxq && !IsMatchNotStock && !this.productList[ind].sellerJson1[k].overdue && this.productList[ind].sellerJson1[k].price<minPrice){
+                if(this.productList[ind].sellerJson1[k].stock>=buyCount){
+                  minPrice=this.productList[ind].sellerJson1[k].price;
+                  productIndex = k;
+                  price = this.productList[ind].sellerJson1[k].price;
+                  stock = this.productList[ind].sellerJson1[k].stock;
+                }
+                
+              }else if(IsMatchJxq  && !IsMatchNotStock  && this.productList[ind].sellerJson1[k].price<minPrice){
+                if(this.productList[ind].sellerJson1[k].stock>=buyCount){
+                  minPrice=this.productList[ind].sellerJson1[k].price;
+                  productIndex = k;
+                  price = this.productList[ind].sellerJson1[k].price;
+                  stock = this.productList[ind].sellerJson1[k].stock;
+                }
+              }else if(!IsMatchJxq && IsMatchNotStock && !this.productList[ind].sellerJson1[k].overdue && this.productList[ind].sellerJson1[k].price<minPrice){
+                  minPrice=this.productList[ind].sellerJson1[k].price;
+                  productIndex = k;
+                  price = this.productList[ind].sellerJson1[k].price;
+                  stock = this.productList[ind].sellerJson1[k].stock;
+              }
+
+            }
+            
+          }
+          //自动帮用户勾上之后
+          if(productIndex!=null){
+            console.log(productIndex);
+            this.productList[ind].sellerJson1[productIndex].selected = true;
+            this.productList[ind].sellerJson1[productIndex].prevSelected = true;
+            this.$http.post("/WebApi/PurchasePlanChangeStoreid", {
+              id: this.productList[ind].id,
+              storeid: this.list.data.purchasingCompanyList[productIndex].storeid,
+              bargain: this.productList[ind].sellerJson1[productIndex].bargain
+            }).then(res => {
+              if(!res.data.success){
+                if(res.data.info=="请先登录"){
+                  $('.loginConfirm').fadeIn();
+                }else{
+                  this.myToast(res.data.info);
+                }
+              }
+            }).catch(err => {
+              //console.log(err);
+              this.myConfirm("网络错误,请重试!");
+            });
+          }
+
+        }
+
         //小计变化
         if (productIndex != null) {
           this.list.data.purchasingCompanyList[productIndex].Total +=
@@ -1905,6 +1998,12 @@ export default {
           ele.sellerJson1[index].selected = false;
           ele.sellerJson1[index].prevSelected = false;
           ele.sellerJson1[index].canSelect = false;
+          //改变此商品列的canBuy值,如果所有商品都无法选择,则改为false
+          var canSelectNum=0;
+          ele.sellerJson1.forEach((seller,i)=>{
+            if(seller && seller.canSelect) canSelectNum++;
+          })
+          if(canSelectNum==0) ele.canBuy=false;
         }
       });
       this.list.data.purchasingCompanyList[index].Total = 0;
@@ -2113,11 +2212,47 @@ export default {
     },
     //添加店铺匹配
     addStore() {
+      var params = new URLSearchParams();
       this.$http
-        .post("/WebApi/VendorAddSelectAllList")
+        .post("/WebApi/VendorAddSelectAllList",params)
         .then(res => {
           if (res.data.success) {
-            this.CompanyList = res.data.data.VendorList;
+            //console.log(res.data.data);
+            this.CompanyList = res.data.data;
+            this.CompanyList.pageCount=Math.ceil(this.CompanyList.recordCount/this.CompanyList.pageSize);
+            this.CompanyList.pageCountList=[];
+            for(var z=0;z<this.CompanyList.pageCount;z++){
+              this.CompanyList.pageCountList.push(z+1);
+            }
+            //console.log(this.CompanyList);
+          } else {
+            if(res.data.info=="请先登录"){
+              $('.loginConfirm').fadeIn();
+            }else{
+              this.myToast(res.data.info);
+            }
+          }
+        })
+        .catch(err => {
+          this.myToast("网络错误,请重试!");
+        });
+    },
+    //点击页码,切换显示数据
+    changePage(val){
+      var params = new URLSearchParams();
+      params.append('VenderName',this.VenderName);
+      params.append('page',val);
+      this.$http
+        .post("/WebApi/VendorAddSelectAllList",params)
+        .then(res => {
+          if (res.data.success) {
+            //console.log(res.data.data);
+            this.CompanyList = res.data.data;
+            this.CompanyList.pageCount=Math.ceil(this.CompanyList.recordCount/this.CompanyList.pageSize);
+            this.CompanyList.pageCountList=[];
+            for(var z=0;z<this.CompanyList.pageCount;z++){
+              this.CompanyList.pageCountList.push(z+1);
+            }
             //console.log(this.CompanyList);
           } else {
             if(res.data.info=="请先登录"){
@@ -2134,12 +2269,19 @@ export default {
     //模态框中搜索店铺
     searchCompany() {
       var params = new URLSearchParams();
-      params.append("VenderName", this.VenderName);
+      params.append('VenderName',this.VenderName);
       this.$http
-        .post("/WebApi/VendorAddSelectAllList", params)
+        .post("/WebApi/VendorAddSelectAllList",params)
         .then(res => {
           if (res.data.success) {
-            this.CompanyList = res.data.data.VendorList;
+            //console.log(res.data.data);
+            this.CompanyList = res.data.data;
+            this.CompanyList.pageCount=Math.ceil(this.CompanyList.recordCount/this.CompanyList.pageSize);
+            this.CompanyList.pageCountList=[];
+            for(var z=0;z<this.CompanyList.pageCount;z++){
+              this.CompanyList.pageCountList.push(z+1);
+            }
+            //console.log(this.CompanyList);
           } else {
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
@@ -2157,15 +2299,15 @@ export default {
       this.modalCompanyChange=true;  //点击了删除或添加匹配
       this.showLoading=true;
       var params = new URLSearchParams();
-      params.append("storeid", this.CompanyList[key].venderid);
-      this.CompanyList[key].IsVendor = true;
+      params.append("storeid", this.CompanyList.VendorList[key].venderid);
+      this.CompanyList.VendorList[key].IsVendor = true;
       this.$http
         .post("/WebApi/VendorAdd", params)
         .then(res => {
           if (!res.data.success) {
             //添加失败
             this.showLoading=false;
-            this.CompanyList[key].IsVendor = false;
+            this.CompanyList.VendorList[key].IsVendor = false;
             // this.myToast(res.data.info);
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
@@ -2200,7 +2342,7 @@ export default {
         })
         .catch(err => {
           this.showLoading=false;
-          this.CompanyList[key].IsVendor = false;
+          this.CompanyList.VendorList[key].IsVendor = false;
           this.myToast("网络错误,请重试!");
         });
     },
@@ -2209,15 +2351,15 @@ export default {
       this.showLoading=true;
       this.modalCompanyChange=true;  //点击了删除或添加匹配
       var params = new URLSearchParams();
-      params.append("storeid", this.CompanyList[key].venderid);
-      this.CompanyList[key].IsVendor = false;
+      params.append("storeid", this.CompanyList.VendorList[key].venderid);
+      this.CompanyList.VendorList[key].IsVendor = false;
       //console.log(this.CompanyList[key].venderid);
       this.$http
         .post("/WebApi/VendorDel", params)
         .then(res => {
           if (!res.data.success) {
             this.showLoading=false;
-            this.CompanyList[key].IsVendor = true;
+            this.CompanyList.VendorList[key].IsVendor = true;
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
             }else{
@@ -2246,7 +2388,7 @@ export default {
         })
         .catch(err => {
           this.showLoading=false;
-          this.CompanyList[key].IsVendor = true;
+          this.CompanyList.VendorList[key].IsVendor = true;
           this.myToast("网络错误,请重试!");
         });
     },
@@ -2340,6 +2482,11 @@ export default {
     //仅显示可采checkbox切换
     list(nVal) {
       this.productList = nVal.data.productList;
+      //最大值和最小值
+      this.productList.forEach((ele,index)=>{
+        ele.maxPrice=(Math.max.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
+        ele.minPrice=(Math.min.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
+      })
       //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
       var time = new Date();
       time.setFullYear(time.getFullYear() + 1);
@@ -2354,14 +2501,17 @@ export default {
           var canSelect = this.list.data.purchasingCompanyList[i].Enabled;
           for (var j = 0, canBuy = 0, hasSelect = 0;j < ele.sellerJson1.length;j++ ){
             if (ele.sellerJson1[j] != undefined) {
-              canBuy++;
+              // canBuy++;
               var productId = ele.sellerJson1[j].storeid;
-              var product_spxq = new Date(ele.sellerJson1[j].spxq); //计算近效期
-              ele.sellerJson1[j].overdue =
-                product_spxq - time > 0 ? false : true;
-              if (ele.sellerJson1[j].spxq.length > 1) {
+              var product_spxq = new Date(Date.parse((ele.sellerJson1[j].spxq).replace(/-/g,'/'))); //计算近效期
+              ele.sellerJson1[j].overdue = product_spxq - time > 0 ? false : true;
+              if (ele.sellerJson1[j].spxq!= null) {
                 ele.sellerJson1[j].spxq = product_spxq.toLocaleDateString();
               } else {
+                ele.sellerJson1[j].overdue = false;
+              }
+              if(isNaN(Date.parse(ele.sellerJson1[j].spxq))) {
+                ele.sellerJson1[j].spxq="";
                 ele.sellerJson1[j].overdue = false;
               }
               if (ele.sellerJson1[j].selected) hasSelect++;
@@ -2388,10 +2538,18 @@ export default {
               }
             }
           }
-          ele.canBuy = canBuy > 0 ? true : false;
+          // ele.canBuy = canBuy > 0 ? true : false;
         }
         if (hasSelect == 0) ele.isSelect = false;
         ele.sellerJson1 = output;
+        //判断canbuy
+        for(var k=0,canBuy=0;k<ele.sellerJson1.length;k++){
+          if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled) canBuy++;
+        }
+        ele.canBuy = canBuy > 0 ? true : false;
+        
+        
+
       });
     }
   },
@@ -2551,12 +2709,22 @@ export default {
         }
         th:first-child {
           width: 40px;
+          position: sticky;
+          left: 0;
+          background-color: #fff;
+          z-index: 99;
         }
         th:nth-child(2) {
-          //width: 260px;
+          position: sticky;
+          left: 39px;
+          background-color: #fff;
+          z-index: 99;
+          &.fixWidth{
+            width:260px;
+          }
         }
         th:nth-child(3) {
-          width: 180px;
+          width: 150px;
           > ul {
             width: 100%;
             margin: 0;
@@ -2573,7 +2741,7 @@ export default {
         th.td_supplier {
           padding-bottom: 0;
           padding: 0;
-          width:100px;
+          width:92px;
           //white-space:nowrap;
           // overflow: hidden;
           //text-overflow: ellipsis;
@@ -2648,6 +2816,7 @@ export default {
       > .product_container {
         table-layout: fixed;
         margin-top: 20px;
+        background-color:#fff;
         tr {
           text-align: center;
           &.no_product {
@@ -2660,11 +2829,20 @@ export default {
             vertical-align: middle;
             &:first-child {
               width: 40px;
+              position: sticky;
+              left: 0;
+              background-color: #fff;
+              z-index: 99;
             }
             &:nth-child(2) {
-              position: relative;
+              &.fixWidth{
+                width:260px;
+              }
               overflow: hidden;
-              //width: 260px;
+               position: sticky;
+              left: 39px;
+              background-color: #fff;
+              z-index: 99;
               > b {
                 white-space: nowrap;
               }
@@ -2680,16 +2858,19 @@ export default {
                 font-size: 12px;
                 color: #999;
                 margin: 0;
+                overflow: hidden;
+                text-overflow:ellipsis;
+                white-space: nowrap;
               }
             }
             &:nth-child(3) {
-              width: 60px;
+              width: 50px;
             }
             &:nth-child(4) {
-              width: 60px;
+              width: 50px;
             }
             &:nth-child(5) {
-              width: 60px;
+              width: 50px;
               &.low {
                 color: #00a65a;
               }
@@ -2714,7 +2895,7 @@ export default {
             &.td_supplier {
               position: relative;
               padding: 0;
-              width:100px;
+              width:92px;
               &.success {
                 cursor: pointer;
               }
@@ -2756,6 +2937,12 @@ export default {
                 .price {
                   font-size: 16px;
                 }
+                .max{
+                  color:red;
+                }
+                .min{
+                  color:#5cb85c;
+                }
                 .info {
                   > p {
                     color: #999;
@@ -2784,6 +2971,7 @@ export default {
   position: fixed;
   bottom: 0;
   left: 0;
+  z-index:200;
   > .account_inner {
     @media screen and(min-width:1520px) {
       width: 1500px;
