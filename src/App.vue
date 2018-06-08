@@ -3050,7 +3050,7 @@ export default {
       width: 1120px;
     }
     @media screen and(max-width:1200px) and(min-width:768px) {
-      width: 800px;
+      width: 100%;
     }
     @media screen and(max-width:767px) {
       width: 100%;
