@@ -143,19 +143,19 @@
                   <input type="checkbox" @click="selectAll($event)" class="checkall" vale="all" v-model="checkall" >
                 </th>
                 <th>商品</th>
-                <th>
+                <th :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0}">
                   库存信息
                   <ul class="clear">
-                    <li class="lf">库存</li>
-                    <li class="lf">月销</li>
+                    <li class="lf" v-if="showStock">库存</li>
+                    <li class="lf" v-if="showMonthlySales">月销</li>
                     <li class="lf">参考价</li>
                   </ul>
                 </th>
-                <th>
+                <th :style="{left:347+(showStock+showMonthlySales)*50+'px'}" :class="{'fixed':showShadow}">
                   采购数量
                 </th>
                 <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
-                  <a href="javascript:;" class="dropdown-toggle" data-toggle="dropdown">{{item.CompanyName.slice(0,6)}}</a>
+                  <a href= "javascript:;" class="dropdown-toggle" data-toggle="dropdown">{{item.CompanyName.slice(0,6)}}</a>
                   <div :class="{'offline':!item.isOnline,'online':item.isOnline}" class="total_price text-center" title="小计">{{'￥'+item.Total.toFixed(2)}}</div>
                   <div class="dropdown-menu">
                     <h5>{{item.CompanyName}}</h5>
@@ -193,11 +193,11 @@
                   <p v-show="product.Recent_supplier">最近采购：{{product.Recent_supplier}}</p>
                 </td>
                 <!-- 库存 -->
-                <td>{{product.Stock}}</td>
+                <td v-show="showStock">{{product.Stock}}</td>
                 <!-- 月销 -->
-                <td>{{product.MonthlySales}}</td>
+                <td v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
                 <!-- 参考价 -->
-                <td :class="{high:product.Price-product.HistoryPrice<0,low:product.Price-product.HistoryPrice>0}">
+                <td :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{high:product.Price-product.HistoryPrice<0,low:product.Price-product.HistoryPrice>0}">
                   <span>{{product.HistoryPrice}}</span>
                   <p class="price_diff" v-if="product.HistoryPrice>0">
                     <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
@@ -206,7 +206,7 @@
                   <p v-else>0</p>
                 </td>
                 <!-- 采购数量 -->
-                <td>
+                <td :style="{left:347+(showStock+showMonthlySales)*50+'px'}" :class="{'fixed':showShadow}">
                   <input type="text" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number="product.BuyCount" :disabled="!product.canBuy">
                 </td>
                 <!-- 药企对应商品 -->
@@ -244,12 +244,13 @@
     <!-- 底部统计结算固定条 -->
     <div class="account">
       <div class="account_inner  clear" v-if="list">
-        <p class="lf">共&nbsp;<span class="num">{{list.data.ProductCount}}</span>&nbsp;件商品,已选择&nbsp;<span class="num">{{list.data.ProductCountSelect}}</span>&nbsp;件,其中&nbsp;<span>{{list.data.noLinkCount}}</span>&nbsp;件未关联,<a :href="'/B30Purchase/CatalogueList?purchase_id='+id">点击关联</a>&nbsp;&nbsp;&nbsp;合计:<span class="num">￥{{TotalPrice}}</span></p>
+        <p class="lf">共&nbsp;<span class="num">{{list.data.ProductCount}}</span>&nbsp;件商品,已选择&nbsp;<span class="num">{{list.data.ProductCountSelect}}</span>&nbsp;件,其中&nbsp;<span>{{list.data.noLinkCount}}</span>&nbsp;件未关联,<a :href="'/B30Purchase/CatalogueList?purchase_id='+id">点击关联</a>&nbsp;&nbsp;&nbsp;合计:<span class="num">￥{{TotalPrice}}</span>(较上次节省:&nbsp;&nbsp;￥{{saveMoney}})</p>
         <button @click="submitOrder" class="rf">提交订单</button>
       </div>
     </div>
 
     <!-- 模态框 -->
+    <!-- 傻逼一样自己写这么多提示框 -->
     <!-- 1、筛选按钮模态框 -->
     <div class="modal fade" id="cg_filter" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
       <div class="modal-dialog" role="document">
@@ -469,8 +470,8 @@
         </h4>
         <p class="info" v-if="list">有&nbsp;{{list.data.CountPurchaseSock}}&nbsp;个品种超出了库存数量，不能提交订单。</P>
         <p class="text-right">
-          <button @click="closeOrder" class="btn btn-primary">确定</button>
-          <button @click="checkOverStock" class="btn btn-default">查看</button>
+          <button @click="closeOrder" class="btn btn-default">确定</button>
+          <button @click="checkOverStock" class="btn btn-primary">查看</button>
         </p>
       </div>
     </div>
@@ -546,14 +547,12 @@ export default {
       sorting: 0, //排序按钮点击对应的值
       factoryName: "",
       productName: "",
+      showStock:0,       //是否显示库存列(所有库存列都为0则不显示)
+      showMonthlySales:0,//是否显示月销列(同上)
+      showShadow:false,  //是否显示阴影
       showLoading: false,
       showYj: false,
       checkall: true,
-      // filterCondition:{
-      //   showCanBuy:true,
-      //   OverStock:false,//是否勾选采购超库存
-      //   PurchaseSpxq:false,//是否勾选上近效期
-      // },
       showCanBuy: true, //是否显示可采
       OverStock: false, //是否勾选采购超库存
       PurchaseSpxq: false, //是否勾选上近效期
@@ -988,13 +987,17 @@ export default {
     var offsetTop = $fixed_top.offset().top;
     var left=$fixed_top.offset().left-8;//顶部固定条距离窗口左侧的距离
     var scrollLeft=0;
-    $(window).scroll(function(e) {
-      
+    $(window).scroll((e)=> {
+      var $this=$(e.target);
       //console.log('正在滚动');
-      scrollLeft=$(this).scrollLeft();
-      //
-      if ($(this).scrollTop() > offsetTop) {
-        
+      scrollLeft=$this.scrollLeft();
+      //console.log(scrollLeft);
+      if(scrollLeft>10){
+        this.showShadow=true;
+      }else{
+        this.showShadow=false;
+      }
+      if ($this.scrollTop() > offsetTop) {
         $fixed_top.css({
           position: "fixed",
           top: 0,
@@ -1007,12 +1010,6 @@ export default {
         });
       }
     });
-
-    //如果供应商大于6加,那么设置第二个td宽度为260px;
-    // console.log(this.list);
-    // if(this.list.purchasingCompanyList.length>6){
-    //   $('td:eq(1)').addClass('fixWidth');
-    // }
 
   },
   updated() {
@@ -1032,6 +1029,16 @@ export default {
       $('td:eq(1)').removeClass('fixWidth');
       $('th:eq(1)').removeClass('fixWidth');
     }
+
+    //根据showStock 和 showMonthlySales来更改宽度
+    // if(Number(this.showStock)+Number(this.showBranchesModal)==0){
+    //   $('th:eq(2)').removeClass().addClass('none');
+    // }else if(Number(this.showStock)+Number(this.showBranchesModal)==1){
+    //   $('th:eq(2)').removeClass().addClass('one');
+    // }else{
+    //   $('th:eq(2)').removeClass();
+    // }
+
   },
   methods: {
     //请求数据函数
@@ -2486,6 +2493,8 @@ export default {
       this.productList.forEach((ele,index)=>{
         ele.maxPrice=(Math.max.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
         ele.minPrice=(Math.min.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
+        if(ele.Stock>0) this.showStock=1;
+        if(ele.showMonthlySales>0) this.showMonthlySales=1;
       })
       //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
       var time = new Date();
@@ -2569,6 +2578,23 @@ export default {
         totalPrice += ele.Total;
       });
       return totalPrice.toFixed(2);
+    },
+    //计算节省金额
+    saveMoney(){
+      var saveMoney=0;
+      var total=0;
+      this.productList.forEach((ele,i)=>{
+        if(ele.HistoryPrice>0 && ele.isSelect){
+          ele.sellerJson1.forEach((item,index)=>{
+            if(item && item.selected){
+              saveMoney+=(ele.HistoryPrice-item.price)*ele.BuyCount;
+              total+=ele.HistoryPrice*ele.BuyCount;
+            }
+          })
+        }
+      });
+      var percent=(saveMoney/total)*100||0;
+      return saveMoney.toFixed(2)+'  ， '+percent.toFixed(2)+'%';
     }
   }
 };
@@ -2724,7 +2750,28 @@ export default {
           }
         }
         th:nth-child(3) {
+          padding:0;
           width: 150px;
+          position:sticky;
+          z-index: 99;
+          background-color:#fff;
+          left:298px;
+          &.one{
+            width:100px;
+            >ul{
+              >li{
+                width:50%;
+              }
+            }
+          }
+          &.none{
+            width:50px;
+            >ul{
+              >li{
+                width:100%;
+              }
+            }
+          }
           > ul {
             width: 100%;
             margin: 0;
@@ -2737,6 +2784,12 @@ export default {
         }
         th:nth-child(4) {
           width: 100px;
+          position:sticky;
+          z-index: 99;
+          background-color:#fff;
+          &.fixed{
+              box-shadow: 6px 0px 10px rgba(0,0,0,.35);
+          }
         }
         th.td_supplier {
           padding-bottom: 0;
@@ -2865,12 +2918,22 @@ export default {
             }
             &:nth-child(3) {
               width: 50px;
+              position:sticky;
+              left:300px;
+              z-index: 99;
+              background-color:#fff;
             }
             &:nth-child(4) {
               width: 50px;
+              position:sticky;
+              z-index: 99;
+              background-color:#fff;
             }
             &:nth-child(5) {
               width: 50px;
+              position:sticky;
+              z-index: 99;
+              background-color:#fff;
               &.low {
                 color: #00a65a;
               }
@@ -2883,6 +2946,12 @@ export default {
             }
             &:nth-child(6) {
               width: 100px;
+              position: sticky;
+              z-index: 99;
+              background-color:#fff;
+              &.fixed{
+                box-shadow: 6px 0px 10px rgba(0,0,0,.35);
+              }
               > input {
                 background-color: #fff;
                 text-align: center;
@@ -2910,6 +2979,7 @@ export default {
                 width: 100%;
                 height: 100%;
                 padding: 10px;
+                padding-left:0;
                 > p {
                   padding-right: 14px;
                   margin: 0;
@@ -2994,11 +3064,11 @@ export default {
     > p {
       margin: 0;
       color: #777;
-      font-size: 12px;
+      font-size: 14px;
       padding-left: 12px;
       > span {
         color: #f07540;
-        font-size: 14px;
+        font-size: 16px;
         &:last-child {
           font-size: 20px;
         }
