@@ -538,6 +538,7 @@
 
 <script>
 import Vue from "vue";
+import moment from 'moment';
 export default {
   name: "App",
   components: {},
@@ -2513,16 +2514,23 @@ export default {
               // canBuy++;
               var productId = ele.sellerJson1[j].storeid;
               var product_spxq = new Date(Date.parse((ele.sellerJson1[j].spxq).replace(/-/g,'/'))); //计算近效期
-              ele.sellerJson1[j].overdue = product_spxq - time > 0 ? false : true;
-              if (ele.sellerJson1[j].spxq!= null) {
+              if (ele.sellerJson1[j].spxq) {
+                
+                ele.sellerJson1[j].overdue = product_spxq - time > 0 ? false : true;
                 ele.sellerJson1[j].spxq = product_spxq.toLocaleDateString();
+                var dayIndex=ele.sellerJson1[j].spxq.indexOf('日');
+                if(dayIndex!=-1){
+                  ele.sellerJson1[j].spxq=ele.sellerJson1[j].spxq.replace(/[\u4e00-\u9fa5]/g,'/').slice(0,dayIndex);
+                }
               } else {
-                ele.sellerJson1[j].overdue = false;
-              }
-              if(isNaN(Date.parse(ele.sellerJson1[j].spxq))) {
                 ele.sellerJson1[j].spxq="";
                 ele.sellerJson1[j].overdue = false;
               }
+              if(ele.sellerJson1[j].spxq=="Invalid Date"){
+                ele.sellerJson1[j].spxq="";
+                ele.sellerJson1[j].overdue = false;
+              }
+
               if (ele.sellerJson1[j].selected) hasSelect++;
             } else {
               var productId = 0.0001;
