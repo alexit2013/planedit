@@ -143,7 +143,7 @@
                   <input type="checkbox" @click="selectAll($event)" class="checkall" vale="all" v-model="checkall" >
                 </th>
                 <th>商品</th>
-                <th :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0}">
+                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0}">
                   库存信息
                   <ul class="clear">
                     <li class="lf" v-if="showStock">库存</li>
@@ -151,7 +151,7 @@
                     <li class="lf">参考价</li>
                   </ul>
                 </th>
-                <th :style="{left:347+(showStock+showMonthlySales)*50+'px'}" :class="{'fixed':showShadow}">
+                <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow}">
                   采购数量
                 </th>
                 <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
@@ -197,7 +197,7 @@
                 <!-- 月销 -->
                 <td v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
                 <!-- 参考价 -->
-                <td :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{high:product.Price-product.HistoryPrice<0,low:product.Price-product.HistoryPrice>0}">
+                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{high:product.Price-product.HistoryPrice<0,low:product.Price-product.HistoryPrice>0}">
                   <span>{{product.HistoryPrice}}</span>
                   <p class="price_diff" v-if="product.HistoryPrice>0">
                     <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
@@ -206,7 +206,7 @@
                   <p v-else>0</p>
                 </td>
                 <!-- 采购数量 -->
-                <td :style="{left:347+(showStock+showMonthlySales)*50+'px'}" :class="{'fixed':showShadow}">
+                <td :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow}">
                   <input type="text" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number="product.BuyCount" :disabled="!product.canBuy">
                 </td>
                 <!-- 药企对应商品 -->
@@ -550,6 +550,7 @@ export default {
       productName: "",
       showStock:0,       //是否显示库存列(所有库存列都为0则不显示)
       showMonthlySales:0,//是否显示月销列(同上)
+      showPrice:0,       //是否显示参考价(同上)
       showShadow:false,  //是否显示阴影
       showLoading: false,
       showYj: false,
@@ -1701,7 +1702,7 @@ export default {
         for (var i = 0; i < len; i++) {
           if (this.productList[ind].sellerJson1[i] &&this.productList[ind].sellerJson1[i].prevSelected){
             this.productList[ind].sellerJson1[i].selected = true;
-
+            
             // console.log("勾选成功");
             // console.log(this.productList[ind].sellerJson1[i].selected);
             productIndex = i;
@@ -1709,7 +1710,7 @@ export default {
             stock = this.productList[ind].sellerJson1[i].stock;
           }
         }
-
+        
         //没有上次勾选的商品
         var IsMatchJxq=this.list.data.IsMatchJxq,
             IsMatchNotStock=this.list.data.IsMatchNotStock;
@@ -1751,7 +1752,7 @@ export default {
           }
           //自动帮用户勾上之后
           if(productIndex!=null){
-            console.log(productIndex);
+            //console.log(productIndex);
             this.productList[ind].sellerJson1[productIndex].selected = true;
             this.productList[ind].sellerJson1[productIndex].prevSelected = true;
             this.$http.post("/WebApi/PurchasePlanChangeStoreid", {
@@ -1778,6 +1779,8 @@ export default {
         if (productIndex != null) {
           this.list.data.purchasingCompanyList[productIndex].Total +=
             price * buyCount;
+          //更新对比价格
+          this.productList[ind].Price=this.productList[ind].sellerJson1[productIndex].price;
           //近效期数量变化
           if (this.productList[ind].sellerJson1[productIndex].overdue) {
             this.list.data.CountSpxq++;
@@ -2496,6 +2499,7 @@ export default {
         ele.minPrice=(Math.min.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
         if(ele.Stock>0) this.showStock=1;
         if(ele.showMonthlySales>0) this.showMonthlySales=1;
+        if(ele.HistoryPrice>0) this.showPrice=1;
       })
       //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
       var time = new Date();
@@ -2740,6 +2744,7 @@ export default {
         th {
           text-align: center;
           vertical-align: middle;
+          height:56px;
         }
         th:first-child {
           width: 40px;
@@ -2942,6 +2947,8 @@ export default {
               position:sticky;
               z-index: 99;
               background-color:#fff;
+              padding-left:4px;
+              padding-right:4px;
               &.low {
                 color: #00a65a;
               }
