@@ -1258,6 +1258,13 @@ export default {
         this.productList[ind].outTop1 = false;
         this.list.data.CountPurchaseSock--;
       }
+      //计算节省金额
+      if(this.productList[ind].HistoryPrice>0){
+        var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].BuyCount;
+        this.list.data.SelectSavePriceAll -=save;
+        this.list.data.SelectPriceAll -= this.productList[ind].BuyCount*this.productList[ind].sellerJson1[key].price;
+      }
+      
       //计算近效期
       if (this.productList[ind].sellerJson1[key].overdue)
         this.list.data.CountSpxq--;
@@ -1356,6 +1363,14 @@ export default {
             this.list.data.purchasingCompanyList[key].Total += price * buyCount;
             //更改产品历史价格
             this.productList[ind].Price = price;
+
+            //计算节省金额
+            if(this.productList[ind].HistoryPrice>0){
+              var save = (this.productList[ind].HistoryPrice - price)*buyCount;
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += buyCount*price;
+            }
+
           } else {
             if (ele && ele.prevSelected) {
               // bargain=ele.bargain;
@@ -1582,9 +1597,10 @@ export default {
     //商品全选和取消全选,并取消或者选中商品的勾选
     selectAll(e) {
       var obj = {};
+      //取消勾选
       if (!e.target.checked) {
         //计算小计
-        // this.list.data.purchasingCompanyList.forEach((ele,i)=>{
+ 
         this.productList.forEach((item, ind) => {
           var buyCount = item.BuyCount;
           item.sellerJson1.forEach((product, index) => {
@@ -1603,10 +1619,21 @@ export default {
                 item.outTop1=false;
               }
               if (product.overdue) this.list.data.CountSpxq--; //近效期
+              //计算节省金额
+              if(item.HistoryPrice>0){
+                var save = (item.HistoryPrice-product.price)*buyCount;
+                this.list.data.SelectSavePriceAll -= save;
+                this.list.data.SelectPriceAll -= buyCount * product.price;
+                console.log(this.list.data.SelectSavePriceAll,this.list.data.SelectPriceAll);
+              }
+
             }
           });
         });
-        // })
+
+        // this.list.data.SelectSavePriceAll = 0;
+        // this.list.data.SelectPriceAll = 0;
+
         //计算已选择商品数
         var checkNum = 0;
         this.productList.forEach((ele, i) => {
@@ -1640,6 +1667,12 @@ export default {
                 item.outTop1=true;
               }
               if (product.overdue) this.list.data.CountSpxq++; //近效期
+              //计算节省金额
+              if(item.HistoryPrice>0){
+                var save = (item.HistoryPrice-product.price)*buyCount;
+                this.list.data.SelectSavePriceAll +=save;
+                this.list.data.SelectPriceAll += buyCount * product.price;
+              }
             }
           });
         });
@@ -1785,6 +1818,12 @@ export default {
           if (this.productList[ind].sellerJson1[productIndex].overdue) {
             this.list.data.CountSpxq++;
           }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            var save = (this.productList[ind].HistoryPrice-price)*buyCount;
+            this.list.data.SelectSavePriceAll +=save;
+            this.list.data.SelectPriceAll += price*buyCount;
+          }
         }
 
         //计算超库存
@@ -1825,6 +1864,13 @@ export default {
           if (this.productList[ind].sellerJson1[productIndex].overdue) {
             this.list.data.CountSpxq--;
           }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            var save = (this.productList[ind].HistoryPrice-price)*this.productList[ind].BuyCount;
+            this.list.data.SelectSavePriceAll -=save;
+            this.list.data.SelectPriceAll -= price *buyCount;
+          }
+
         }
       }
       //发送此商品是否选中的数据
@@ -1853,11 +1899,7 @@ export default {
           this.myToast("网络错误,请重试!");
         });
 
-      for (
-        var i = 0, canBuy = 0, selected = 0;
-        i < this.productList.length;
-        i++
-      ) {
+      for ( var i = 0, canBuy = 0, selected = 0;i < this.productList.length;i++) {
         if (this.productList[i].canBuy) {
           canBuy++;
           if (this.productList[i].isSelect) selected++;
@@ -2093,7 +2135,7 @@ export default {
       this.$http
         .post("/WebApi/getlist", {
           id: this.id,
-          type: 1,
+          type: Number(this.showCanBuy),
           DrugName: this.productName,
           Manufacturer: this.factoryName
         })
@@ -2593,20 +2635,25 @@ export default {
     },
     //计算节省金额
     saveMoney(){
-      var saveMoney=0;
-      var total=0;
-      this.productList.forEach((ele,i)=>{
-        if(ele.HistoryPrice>0 && ele.isSelect){
-          ele.sellerJson1.forEach((item,index)=>{
-            if(item && item.selected){
-              saveMoney+=(ele.HistoryPrice-item.price)*ele.BuyCount;
-              total+=ele.HistoryPrice*ele.BuyCount;
-            }
-          })
-        }
-      });
-      var percent=(saveMoney/total)*100||0;
-      return saveMoney.toFixed(2)+'  ， '+percent.toFixed(2)+'%';
+      // var saveMoney=0;
+      // var total=0;
+      // this.productList.forEach((ele,i)=>{
+      //   if(ele.HistoryPrice>0 && ele.isSelect){
+      //     ele.sellerJson1.forEach((item,index)=>{
+      //       if(item && item.selected){
+      //         saveMoney+=(ele.HistoryPrice-item.price)*ele.BuyCount;
+      //         total+=ele.HistoryPrice*ele.BuyCount;
+      //       }
+      //     })
+      //   }
+      // });
+      //console.log(saveMoney);
+      // var percent=(saveMoney/total)*100||0;
+      // return saveMoney.toFixed(2)+'  ， '+percent.toFixed(2)+'%';
+      var SelectSavePriceAll = this.list.data.SelectSavePriceAll ;
+      var percent=(SelectSavePriceAll.toFixed(2)/this.list.data.SelectPriceAll.toFixed(2))*100||0;
+      return SelectSavePriceAll.toFixed(2)+'  ， '+percent.toFixed(2)+'%';  
+
     }
   }
 };
