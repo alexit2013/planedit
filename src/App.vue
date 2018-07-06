@@ -694,9 +694,7 @@ export default {
         $this.val(0);
       }
       //productList中的BranchesJson数组更新
-      this.productList[productIndex].BranchesJson[
-        branchesIndex
-      ].BuyCount = value;
+      //this.productList[productIndex].BranchesJson[branchesIndex].BuyCount = value;
 
       //模态框中的采购数量小计
       var total = 0;
@@ -767,12 +765,16 @@ export default {
       //向服务器发送多门店采购修改数量
       //生成{商品ID:购买数量}格式数据
       var params = new URLSearchParams();
-      $(".branchesModal .input").each(function(i, ele) {
-        var $this = $(ele);
-        var id = $this.data("id"),
-          value = $this.val();
+      $(".branchesModal .input").each((i, ele)=> {
+        var $input = $(ele);
+        var id = $input.data("id"),
+          value = parseInt($input.val());
         // obj[id]=value;
         params.append(id, value);
+
+        var branchesIndex = $input.data('branchesindex');
+        this.productList[productIndex].BranchesJson[branchesIndex].BuyCount = value;
+
       });
       //console.log(obj);
       this.$http
@@ -859,7 +861,7 @@ export default {
               .then(res => {
                 if (res.data.success) {
                   this.list = res.data;
-                  console.log(this.list);
+                  //console.log(this.list);
                   this.showLoading = false;
                 } else {
                   this.showLoading = false;
@@ -871,7 +873,7 @@ export default {
                 }
               })
               .catch(err => {
-                his.showLoading = false;
+                this.showLoading = false;
                 this.myConfirm("网络错误,请重试!");
               });
           } else {
@@ -1929,8 +1931,30 @@ export default {
           .then(res => {
             if (res.data.success == true) {
               //导入成功
-              //log(res.data);
               $('.uploadDoneConfirm').fadeIn();
+
+              //导入成功,重新请求数据
+              this.$http.post("/WebApi/PurchaseEditRefresh", {
+                id: this.id
+              }).then(res => {
+                if (res.data.success) {
+                  this.list = res.data;
+                  //console.log(this.list);
+                  this.showLoading = false;
+                } else {
+                  this.showLoading = false;
+                  if(res.data.info=="请先登录"){
+                    $('.loginConfirm').fadeIn();
+                  }else{
+                    this.myConfirm(res.data.info);
+                  }
+                }
+              })
+              .catch(err => {
+                this.showLoading = false;
+                this.myConfirm("网络错误,请重试!");
+              });
+
             } else {
               //导入失败
               if(res.data.info=="请先登录"){
@@ -2515,7 +2539,8 @@ export default {
     },
     //导入成功,刷新页面
     closeUploadConfirm(){
-      location.reload();
+      //location.reload();
+      $('.uploadDoneConfirm').fadeOut();
     },
     //changeIsMatchJxq 改变是否匹配近效期
     changeIsMatchJxq(e){
