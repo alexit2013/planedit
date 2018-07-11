@@ -390,7 +390,7 @@
       </div>
     </div>
     <!-- 5、加载中loading图 -->
-    <div v-if="showLoading" class="loading">
+    <div v-show="showLoading" class="loading">
       <img src="./assets/img/loading-0.gif"/>
     </div>
     <!-- 6、添加匹配店铺模态框 -->
@@ -722,6 +722,14 @@ export default {
         this.productList[productIndex].sellerJson1.forEach((ele, i) => {
           if (ele && ele.prevSelected) {
             this.list.data.purchasingCompanyList[i].Total += ce * ele.price;
+            //计算节省金额
+            if(this.productList[productIndex].HistoryPrice>0){
+              //当修改后的购买数量大于之前的购买数量
+                var save= (total-buyCount0)*(this.productList[productIndex].HistoryPrice - ele.price);
+                this.list.data.SelectSavePriceAll +=save;
+                this.list.data.SelectPriceAll += (total-buyCount0)*ele.price;
+            }
+
           }
         });
       } else if (total < buyCount0) {
@@ -730,7 +738,18 @@ export default {
         this.productList[productIndex].sellerJson1.forEach((ele, i) => {
           if (ele && ele.prevSelected) {
             this.list.data.purchasingCompanyList[i].Total -= ce * ele.price;
+            //计算节省
+            if(this.productList[productIndex].HistoryPrice>0){
+              var save= (buyCount0 - total) * (this.productList[productIndex].HistoryPrice - ele.price);
+              this.list.data.SelectSavePriceAll -= save;
+              this.list.data.SelectPriceAll -= (buyCount0 - total)*ele.price;
+          
+            }
+
           }
+
+          
+
         });
       }
       this.productList[productIndex].BuyCount0 = total;
@@ -988,6 +1007,7 @@ export default {
 
     //页面滚动时让fixed_top固定在顶部
     var $fixed_top = $(".fixed_top");
+    var $box = $('.content>.box');
     var offsetTop = $fixed_top.offset().top;
     var left=$fixed_top.offset().left-8;//顶部固定条距离窗口左侧的距离
     var scrollLeft=0;
@@ -1007,11 +1027,13 @@ export default {
           top: 0,
           left:left-scrollLeft
         });
+        $box.addClass('helpFixed');
           
       } else {
         $fixed_top.css({
           position: "static"
         });
+        $box.removeClass('helpFixed');
       }
     });
 
@@ -1366,12 +1388,6 @@ export default {
             //更改产品历史价格
             this.productList[ind].Price = price;
 
-            //计算节省金额
-            if(this.productList[ind].HistoryPrice>0){
-              var save = (this.productList[ind].HistoryPrice - price)*buyCount;
-              this.list.data.SelectSavePriceAll +=save;
-              this.list.data.SelectPriceAll += buyCount*price;
-            }
 
           } else {
             if (ele && ele.prevSelected) {
@@ -1392,6 +1408,15 @@ export default {
           if (this.productList[ind].sellerJson1[key].overdue) {
             this.list.data.CountSpxq++;
           }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            //当修改后的购买数量大于之前的购买数量
+              var save= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[key].price);
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += this.productList[ind].BuyCount * this.productList[ind].sellerJson1[key].price;
+          
+          }
+
         } else {
           //之前有选中的商品
           //console.log(preSelectIndex);
@@ -1404,6 +1429,20 @@ export default {
             if (this.productList[ind].sellerJson1[key].overdue)
               this.list.data.CountSpxq++;
           }
+
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            //当修改后的购买数量大于之前的购买数量
+              var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[preSelectIndex].price);
+              this.list.data.SelectSavePriceAll -=preSave;
+              this.list.data.SelectPriceAll -= this.productList[ind].BuyCount * this.productList[ind].sellerJson1[preSelectIndex].price;
+
+              var nowSave = this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[key].price);
+              this.list.data.SelectSavePriceAll +=nowSave;
+              this.list.data.SelectPriceAll += this.productList[ind].BuyCount * this.productList[ind].sellerJson1[key].price;
+          
+          }
+
         }
         // this.productList[ind].sellerJson1[key].bargain=bargain;   //转移议价
         //向服务器发送数据选中的商品
@@ -1465,7 +1504,7 @@ export default {
         //console.log(this.list.data.purchasingCompanyList[key].CompanyName);
         $(".yjModal .price").text(this.productList[ind].sellerJson1[key].price);
         $(".yjModal .historyPrice").text(this.productList[ind].HistoryPrice);
-
+        $(".yjModal .input").val(this.productList[ind].sellerJson1[key].bargain);
         $(".yjModal").slideDown();
       }
     },
@@ -1480,8 +1519,10 @@ export default {
     //输入采购数量,修正负数,当为负数时取消商品选中
     buyCountChange(e, ind) {
       //console.log("购买数量改变")
+      //console.log(this.productList[ind].BuyCount0);
+      var prevBuyCount=this.productList[ind].BuyCount0
       var val = parseInt(e.target.value);
-      //console.log(val);
+      // console.log(val);
       if (isNaN(val) || val <= 0) {
         val = 1;
         //this.productList[ind].isSelect=false;
@@ -1510,6 +1551,21 @@ export default {
             this.productList[ind].outTop1 = false;
             this.list.data.CountPurchaseSock--;
           }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            //当修改后的购买数量大于之前的购买数量
+            if(val>prevBuyCount){
+              var save= (val-prevBuyCount)*(this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += (val-prevBuyCount)*price;
+            }else if(val<prevBuyCount){
+              var save= (prevBuyCount - val) * (this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll -= save;
+              this.list.data.SelectPriceAll -= (prevBuyCount - val)*price;
+            }
+          
+          }
+
         }
       });
 
@@ -1598,6 +1654,7 @@ export default {
     },
     //商品全选和取消全选,并取消或者选中商品的勾选
     selectAll(e) {
+      if(this.productList.length==0) return;
       var obj = {};
       //取消勾选
       if (!e.target.checked) {
@@ -1626,7 +1683,7 @@ export default {
                 var save = (item.HistoryPrice-product.price)*buyCount;
                 this.list.data.SelectSavePriceAll -= save;
                 this.list.data.SelectPriceAll -= buyCount * product.price;
-                console.log(this.list.data.SelectSavePriceAll,this.list.data.SelectPriceAll);
+                //console.log(this.list.data.SelectSavePriceAll,this.list.data.SelectPriceAll);
               }
 
             }
@@ -1704,11 +1761,10 @@ export default {
         str += key + ":";
         str += obj[key] + ",";
       }
-      this.$http
-        .post("/WebApi/PurchasePlanSetisSelect", {
+      if(str == "") return;
+      this.$http.post("/WebApi/PurchasePlanSetisSelect", {
           data: str
-        })
-        .then(res => {
+        }).then(res => {
           if(!res.data.success){
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
@@ -1716,8 +1772,7 @@ export default {
               this.myToast(res.data.info);
             }
           }
-        })
-        .catch(err => {
+        }).catch(err => {
           this.myToast("网络错误,请重试!");
         });
     },
@@ -1931,7 +1986,8 @@ export default {
           .then(res => {
             if (res.data.success == true) {
               //导入成功
-              $('.uploadDoneConfirm').fadeIn();
+              //$('.uploadDoneConfirm').fadeIn();
+              this.myToast("导入成功,正在刷新采购计划!");
 
               //导入成功,重新请求数据
               this.$http.post("/WebApi/PurchaseEditRefresh", {
@@ -1971,6 +2027,7 @@ export default {
             this.myToast("网络错误,请重试!");
           });
       }
+      e.target.value=null;
       //<input @change="upLoad($event)" type="file"/>
     },
     //排序点击默认排序
@@ -2769,6 +2826,9 @@ export default {
     border-top: 3px solid #d2d6de;
     padding: 10px;
     margin-bottom: 60px;
+    &.helpFixed{
+      padding-top:70px;
+    }
     > .box_header {
       padding: 10px 0;
       > .check {
@@ -3332,8 +3392,8 @@ export default {
   z-index: 1800;
   position: fixed;
   width: 256px;
-  height: 60px;
-  line-height: 60px;
+  height: 80px;
+  padding:12px;
   border-radius: 10px;
   text-align: center;
   left: 0;
