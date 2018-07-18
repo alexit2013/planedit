@@ -11,7 +11,7 @@
         </div>
         <!-- 按钮 -->
         <div v-if="userList" class="collapse navbar-collapse" id="navbar-collapse" aria-expanded="false" style="height: 1px;">
-            <ul class="nav navbar-nav">
+            <ul v-html="navbarHtml" class="nav navbar-nav">
                 <li><a href="/B30Purchase/PurchasePlan">采购计划</a></li>
                 <li><a href="/B30Purchase/CatalogueList">商品目录管理</a></li>
                 <li><a href="/B30Purchase/VenderList">供应商管理</a></li>
@@ -569,6 +569,7 @@ export default {
       userList:null,
       isLogin:false,
       modalCompanyChange:false,   //打开模态框中添加或删除店铺是否点击
+      navbarHtml:''                //动态获取navbar代码片段
     };
   },
   created() {
@@ -584,6 +585,15 @@ export default {
     }).catch(err=>{
       this.myConfirm('网络错误,无法获得登录信息!');
       location.href="/home/index";
+    })
+
+    //获取动态navbar
+    this.$http({
+      method:'get',
+      url:'/B30Purchase/GetMenuList',
+      responseType:'text'
+    }).then(res=>{
+      this.navbarHtml = res.data;
     })
 
     this.id = location.search.slice(4);
@@ -2779,6 +2789,21 @@ export default {
           }
         }
       }
+      .manage{
+        >ul{
+          >li{
+            >a{
+              color:#777;
+            }
+          }
+        }
+
+        &:hover .dropdown-menu{
+        display: block;
+      }
+
+      }
+
     }
   }
   a{
