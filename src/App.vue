@@ -11,10 +11,8 @@
         </div>
         <!-- 按钮 -->
         <div v-if="userList" class="collapse navbar-collapse" id="navbar-collapse" aria-expanded="false" style="height: 1px;">
-            <ul v-html="navbarHtml" class="nav navbar-nav">
-                <li><a href="/B30Purchase/PurchasePlan">采购计划</a></li>
-                <li><a href="/B30Purchase/CatalogueList">商品目录管理</a></li>
-                <li><a href="/B30Purchase/VenderList">供应商管理</a></li>
+            <ul v-html="navbarHtml"  class="nav navbar-nav">
+                
             </ul>
             <!-- 右侧登录信息 -->
              <ul class="nav navbar-nav navbar-right">
@@ -1104,13 +1102,9 @@ export default {
               params.append("id", this.id);
               if (res.data.data.isChange) {
                 params.append("PriceChange", 1);
-                this.myConfirm("卖家价格发生变化,正在更新采购计划中变化的价格");
-              } else {
-                this.myConfirm("采购的卖家数量发生变动,正在重新生成采购计划");
-              }
-              this.$http
-                .post("/WebApi/ChangePurchasePlan", params)
-                .then(res => {
+                this.myConfirm("卖家价格发生变化,正在更新采购计划中的价格");
+                
+                this.$http.post("/WebApi/ChangePricePurchasePlan", params).then(res => {
                   if (res.data.success) {
                     //重新计算成功,在次重新请求数据
                     this.$http
@@ -1141,11 +1135,51 @@ export default {
                     this.showLoading = false;
                     this.myToast(res.data.info);
                   }
-                })
-                .catch(err => {
+                }).catch(err => {
                   this.showLoading = false;
                   this.myToast("网络错误,请重试!");
                 });
+
+              } else {
+                this.myConfirm("采购的卖家数量发生变动,正在重新生成采购计划");
+                
+                this.$http.post("/WebApi/ChangePurchasePlan", params).then(res => {
+                  if (res.data.success) {
+                    //重新计算成功,在次重新请求数据
+                    this.$http
+                      .post("/WebApi/getlist", {
+                        id: this.id,
+                        type: Number(this.showCanBuy),
+                        OverStock: Number(this.OverStock),
+                        PurchaseSpxq: Number(this.PurchaseSpxq),
+                        PriceChange: Number(this.PriceChange),
+                        sorting: this.sorting,
+                        filter_select: this.filter_select,
+                        filter_pricetype: this.filter_pricetype,
+                        filter_source: this.filter_source
+                      })
+                      .then(res => {
+                        this.showLoading = false;
+                        if (res.data.success) {
+                          this.list = res.data;
+                        } else {
+                          this.myToast(res.data.info);
+                        }
+                      })
+                      .catch(err => {
+                        this.showLoading = false;
+                        this.myToast("网络错误,请重试!");
+                      });
+                  } else {
+                    this.showLoading = false;
+                    this.myToast(res.data.info);
+                  }
+                }).catch(err => {
+                  this.showLoading = false;
+                  this.myToast("网络错误,请重试!");
+                });
+              }
+              
             }
           } else {
             if(res.data.info=="请先登录"){
@@ -2751,7 +2785,7 @@ export default {
 };
 </script>
 
-<style scoped lang="less">
+<style lang="less">
 @media (min-width: 992px) {
   .modal-big {
     width: 992-30px;
@@ -2809,14 +2843,14 @@ export default {
   a{
     color:#fff;
     &:hover{
-      background-color:rgba(0, 0, 0, 0.1);
+      background-color:rgba(0, 0, 0, 0.1) !important;
     }
     &:focus{
-      background-color:rgba(0, 0, 0, 0.1);
+      background-color:rgba(0, 0, 0, 0.1) !important;
     }
   }
   .nav .open>a{
-    background-color: rgba(0,0,0,0.1);
+    background-color: rgba(0,0,0,0.1) !important;
 
   }
 }
