@@ -86,10 +86,10 @@
               <input id="checkckc" type="checkbox" @change="changeOverStock($event)" v-model="OverStock" ><label for="checkckc">采购超库存</label><span>{{list.data.CountPurchaseSock}}</span>
             </p>
             <p>
-              <input id="checkjxq" type="checkbox" @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq"><label for="checkjxq">近效期(1年以内)</label> <span>{{list.data.CountSpxq}}</span>
+              <input id="checkjxq" type="checkbox" @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq"><label for="checkjxq">近效期(1年以内)</label><span>{{list.data.CountSpxq}}</span>
             </p>
             <p>
-              <input id="checkjg" type="checkbox" @change="changePriceChange($event)"  v-model="PriceChange"><label for="checkjg">价格变动</label> <span>{{list.data.CountPriceChange}}</span>
+              <input id="checkjg" type="checkbox" @change="changePriceChange($event)"  v-model="PriceChange"><label for="checkjg">价格变动</label><span>{{list.data.CountPriceChange}}</span>
             </p>
             <p>
               <button class="btn btn-default" data-toggle="modal" data-target="#cg_filter">
@@ -174,12 +174,12 @@
           <!-- 采购详情内容 -->
           <table class="product_container table table-bordered table-hover">
             <tbody v-if="productList.length>0">
-              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy}">
-                <td>
+              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple}">
+                <td :class="{'multiple':product.openMultiple}">
                   <input type="checkbox" @click="selectOne($event,ind)" v-model="product.isSelect" :disabled="!product.canBuy">
                 </td>
                 <!-- 商品名称列 -->
-                <td class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
+                <td :class="{'multiple':product.openMultiple}" class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
                   <b>{{product.DrugsBase_DrugName}}</b>
                   <span class="label label-info" v-if="product.BranchesCount>0">多门店</span>
                   <span  class='label label-warning' v-if="product.Goods_ID==0">未关联</span>
@@ -191,11 +191,11 @@
                   <p v-show="product.Recent_supplier">最近采购：{{product.Recent_supplier}}</p>
                 </td>
                 <!-- 库存 -->
-                <td v-show="showStock">{{product.Stock}}</td>
+                <td :class="{'multiple':product.openMultiple}"  v-show="showStock">{{product.Stock}}</td>
                 <!-- 月销 -->
-                <td v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
+                <td :class="{'multiple':product.openMultiple}" v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
                 <!-- 参考价 -->
-                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{high:product.Price-product.HistoryPrice<0,low:product.Price-product.HistoryPrice>0}">
+                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{'high':product.Price-product.HistoryPrice<=0 || product.HistoryPrice ==0,'low':product.Price-product.HistoryPrice>0,'multiple':product.openMultiple}">
                   <span>{{product.HistoryPrice}}</span>
                   <p class="price_diff" v-if="product.HistoryPrice>0">
                     <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
@@ -204,14 +204,22 @@
                   <p v-else>0</p>
                 </td>
                 <!-- 采购数量 -->
-                <td :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow}">
-                  <input type="text" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number="product.BuyCount" :disabled="!product.canBuy">
+                <td @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple}">
+                  <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
+                  <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
+                    <span v-html="multipleCount(ind)"></span>
+                      /
+                    <span>{{product.BuyCount}}</span>
+                  </p>
+                  <button @click="startMultiple(ind)" v-show="product.canMultiple && !product.openMultiple && product.mouseOn && product.outTop1 &&product.isSelect" class="open btn btn-primary btn-xs">供应商多选</button>
+                  <button @mouseenter="showClose($event)" @mouseleave="showOpen($event)" @click="closeMultiple(ind,$event)" v-show="product.canMultiple && product.openMultiple" class="opened btn btn-primary btn-xs">多选</button>
+                  <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;bottom:34px;" class="fa fa-exclamation-circle"></i>
                 </td>
                 <!-- 药企对应商品 -->
-                <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||!item.selected,not_allowd:!item||!item.canSelect}">
+                <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
                   <!-- 有商品 -->
-                  <div v-if="item" @click.stop="product_choose(ind,key,product.BuyCount,item.price)">
-                    <i class="icon" v-show="item.selected" @click.stop="cancel_select(ind,key,product.BuyCount,item.price)">
+                  <div v-if="item" @click.stop="product_choose(ind,key,product.BuyCount,item.price)" :data-toggle="product.openMultiple&&item.buyCount>0&&'popover'" data-placement="bottom" :data-content="popColor(item.stock,item.spxq,item.overdue)">
+                    <i class="icon" v-show="(!product.openMultiple&&item.selected&&product.isSelect) || (item.buyCount>0 && product.openMultiple&&product.isSelect)" @click.stop="cancel_select(ind,key,product.BuyCount,item.price)">
                       <span class="fa fa-check"></span>
                     </i>
                     <p v-if="item.bargain>0">
@@ -219,9 +227,12 @@
                       {{item.bargain}}
                     </p>
                     <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
-                    <div class="info">
+                    <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
                       <p>库存 {{item.stock}}</p>
                       <p>效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
+                    </div>
+                    <div v-show="product.openMultiple && item.buyCount>0 &&product.isSelect">
+                      <input style="margin-left:4px;" @click.stop="multipleClick" @change="multipleBuyCountChange(ind,key,item.stock,$event)" type="text" class="form-control" :value="item.buyCount"   :class="{'out_top':item.buyCount>item.stock}">
                     </div>
                   </div>
                   <!-- 无商品 -->
@@ -466,7 +477,7 @@
         <h4 class="title">信息
           <span @click="closeOrder" class="shut rf">&times;</span>
         </h4>
-        <p class="info" v-if="list">有&nbsp;{{list.data.CountPurchaseSock}}&nbsp;个品种超出了库存数量，不能提交订单。</P>
+        <p class="info" v-if="list">有&nbsp;{{outTopCount}}&nbsp;个品种超出了库存数量，不能提交订单。</P>
         <p class="text-right">
           <button @click="closeOrder" class="btn btn-default">确定</button>
           <button @click="checkOverStock" class="btn btn-primary">查看</button>
@@ -623,6 +634,7 @@ export default {
     $("[data-toggle='tooltip']").tooltip();
     //启用popover
     $("[data-toggle='popover']").popover({
+      html:true,
       trigger: "hover",
       container: "body"
     });
@@ -657,23 +669,31 @@ export default {
         storeIndex = $this.data("storeIndex"),
         purchaselistid = $this.data("purchaselistid"),
         storeid = $this.data("storeid"),
-        bargain = parseFloat($this.data("bargain"));
+        bargain = parseFloat($this.data("bargain")),
+        BuyCount = Number($this.data('buyCount'));
       //console.log(bargain);
       this.productList[productIndex].sellerJson1[storeIndex].bargain = bargain;
       if (!isNaN(bargain)) {
-        var params = new URLSearchParams();
-        params.append("purchaselistid", purchaselistid);
-        params.append("storeid", storeid);
-        params.append("bargain", bargain);
-        this.$http.post("/WebApi/PurchasePlanBargain", params).then(res => {
-          if(!res.data.success){
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myConfirm(res.data.info);
+        
+        if($(this).data('openMultiple')== true){
+          var params = new URLSearchParams();
+          params.append("purchaselistid", purchaselistid);
+          params.append("storeid", storeid);
+          params.append("bargain", bargain);
+          this.$http.post("/WebApi/PurchasePlanBargain", params).then(res => {
+            if(!res.data.success){
+              if(res.data.info=="请先登录"){
+                $('.loginConfirm').fadeIn();
+              }else{
+                this.myConfirm(res.data.info);
+              }
             }
-          }
-        });
+          });
+        }else{
+          //向服务器发送数据
+          this.multiplePost(purchaselistid,storeid,BuyCount,bargain);
+        }
+        
       } else {
         this.myToast("请设置合理的议价价格!");
         return;
@@ -1051,6 +1071,7 @@ export default {
     $("[data-toggle='tooltip']").tooltip();
     //启用popover
     $("[data-toggle='popover']").popover({
+      html:true,
       trigger: "hover",
       container: "body"
     });
@@ -1317,60 +1338,147 @@ export default {
      * price单价
      */
     cancel_select(ind, key, buyCount, price) {
-      this.productList[ind].sellerJson1[key].selected = false;
-      this.productList[ind].sellerJson1[key].prevSelected = true;
-      this.productList[ind].isSelect = false;
-      this.checkall = false;
-      if (this.productList[ind].outTop1) {
-        this.productList[ind].outTop0 = true;
-        this.productList[ind].outTop1 = false;
-        this.list.data.CountPurchaseSock--;
-      }
-      //计算节省金额
-      if(this.productList[ind].HistoryPrice>0){
-        var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].BuyCount;
-        this.list.data.SelectSavePriceAll -=save;
-        this.list.data.SelectPriceAll -= this.productList[ind].BuyCount*this.productList[ind].sellerJson1[key].price;
-      }
-      
-      //计算近效期
-      if (this.productList[ind].sellerJson1[key].overdue)
-        this.list.data.CountSpxq--;
-      //计算小计
-      var buyCount = this.productList[ind].BuyCount,
-        price = this.productList[ind].sellerJson1[key].price;
-      // console.log(buyCount,price);
-      // console.log('之前的小计'+this.list.data.purchasingCompanyList[key].Total);
-      this.list.data.purchasingCompanyList[key].Total -= buyCount * price;
-      // console.log('现在的价格'+this.list.data.purchasingCompanyList[key].Total);
-      //计算已选择商品-1
-      this.list.data.ProductCountSelect--;
-      //向服务器发送数据
-      var obj = {},
-        str = "";
-      obj[this.productList[ind].id] = false;
-      for (var a in obj) {
-        str += a + ":";
-        str += false;
-      }
-      //console.log(str);
-      this.$http
-        .post("/WebApi/PurchasePlanSetisSelect", {
-          data: str
-        })
-        .then(res => {
-          if(!res.data.success){
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myToast(res.data.info);
+
+      if(!this.productList[ind].openMultiple){
+        this.productList[ind].sellerJson1[key].selected = false;
+        this.productList[ind].sellerJson1[key].prevSelected = true;
+        this.productList[ind].isSelect = false;
+        this.checkall = false;
+        if (this.productList[ind].outTop1) {
+          this.productList[ind].outTop0 = true;
+          this.productList[ind].outTop1 = false;
+          this.list.data.CountPurchaseSock--;
+        }
+        //计算节省金额
+        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+          var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].BuyCount;
+          this.list.data.SelectSavePriceAll -=save;
+          this.list.data.SelectPriceAll -= this.productList[ind].BuyCount*this.productList[ind].sellerJson1[key].price;
+        }
+        
+        //计算近效期
+        if (this.productList[ind].sellerJson1[key].overdue)
+          this.list.data.CountSpxq--;
+        //计算小计
+        var buyCount = this.productList[ind].BuyCount,
+          price = this.productList[ind].sellerJson1[key].price;
+        // console.log(buyCount,price);
+        // console.log('之前的小计'+this.list.data.purchasingCompanyList[key].Total);
+        this.list.data.purchasingCompanyList[key].Total -= buyCount * price;
+        // console.log('现在的价格'+this.list.data.purchasingCompanyList[key].Total);
+        //计算已选择商品-1
+        this.list.data.ProductCountSelect--;
+        //向服务器发送数据
+        var obj = {},
+          str = "";
+        obj[this.productList[ind].id] = false;
+        for (var a in obj) {
+          str += a + ":";
+          str += false;
+        }
+        //console.log(str);
+        this.$http
+          .post("/WebApi/PurchasePlanSetisSelect", {
+            data: str
+          })
+          .then(res => {
+            if(!res.data.success){
+              if(res.data.info=="请先登录"){
+                $('.loginConfirm').fadeIn();
+              }else{
+                this.myToast(res.data.info);
+              }
             }
-          }
+          })
+          .catch(err => {
+            this.myConfirm("网络错误,请重试!");
+            //console.log(err);
+          });
+      }else if(this.productList[ind].openMultiple){
+        //在多选状态下,取消勾选商品
+        var multipleCount=0,
+            overdue = 0;
+        this.productList[ind].sellerJson1.forEach((ele,i)=>{
+          if(ele.buyCount>0){
+            multipleCount++;
+            if(i == key){
+              var price = ele.price;
+              //console.log(price*ele.buyCount);
+              this.list.data.purchasingCompanyList[key].Total-=(price*ele.buyCount);
+            }
+            if(ele.overdue){
+              overdue++;
+            }
+          } 
         })
-        .catch(err => {
-          this.myConfirm("网络错误,请重试!");
-          //console.log(err);
-        });
+        if(multipleCount==1){
+          //在多选状态下,取消勾选,但是只有一个商品
+          this.productList[ind].isSelect=false;
+          this.productList[ind].openMultiple = false;
+          this.productList[ind].sellerJson1[key].selected = false;
+          this.productList[ind].sellerJson1[key].preSelected = true;
+
+          //已选商品数
+          this.list.data.ProductCountSelect--;
+          if(this.productList[ind].sellerJson1[key].overdue){
+            this.list.data.CountSpxq--;
+          }
+
+          //发送修改购买数量
+           var params = new URLSearchParams();
+            params.append("id", this.productList[ind].id);
+            params.append("BuyCount", this.productList[ind].BuyCount);
+          this.$http.post('/WebApi/PurchasePlanModifyBuyCount',params).then(res=>{
+            console.log(res.data)
+          }).catch(err=>{
+            this.myConfirm("网络错误,请重试!");
+          })
+
+          //发送此商品未选中
+          var obj = {};
+          obj[this.productList[ind].id] = false;
+          var str = "";
+          for (var ak in obj) {
+            str += ak + ":";
+            str += obj[ak] + ",";
+          }
+          //console.log(str);
+          this.$http.post("/WebApi/PurchasePlanSetisSelect", {
+              data: str
+            })
+            .then(res => {
+              if(!res.data.success){
+                if(res.data.info=="请先登录"){
+                  $('.loginConfirm').fadeIn();
+                }else{
+                  this.myToast(res.data.info);
+                }
+              }
+            })
+            .catch(err => {
+              this.myToast("网络错误,请重试!");
+            });
+
+        }else{
+          if(overdue == 1 && this.productList[ind].sellerJson1[key].overdue) this.list.data.CountSpxq--;
+          //向服务器发送数据
+          var storeid = this.productList[ind].sellerJson1[key].storeid,
+              BuyCount = 0,
+              bargain = this.productList[ind].sellerJson1[key].bargain,
+              id = this.productList[ind].id;
+          this.multiplePost(id,storeid,BuyCount,bargain);
+        }
+        //console.log(ind,key);
+        this.productList[ind].sellerJson1[key].buyCount=0;
+        
+         //计算节省金额
+        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+          var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].sellerJson1[key].buyCount;
+          this.list.data.SelectSavePriceAll -=save;
+          this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[key].buyCount*this.productList[ind].sellerJson1[key].price;
+        }
+
+      }
     },
     //点击产品,如果未勾选则勾选且将此商品中,其他供应商商品取消勾选
     /**@augments
@@ -1383,7 +1491,7 @@ export default {
       //如果是取消匹配下的店铺 直接return
       if (!this.productList[ind].sellerJson1[key].canSelect) return;
       //如果未勾选
-      if (!this.productList[ind].sellerJson1[key].selected) {
+      if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) {
         var bargain = 0;
         var hasSelect = 0;
         var preSelectIndex = null;
@@ -1529,8 +1637,8 @@ export default {
           .catch(err => {
             this.myToast("网络错误,请重试!");
           });
-      } else {
-        //如果已勾选
+      } else if((this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) || (this.productList[ind].sellerJson1[key].buyCount>0 && this.productList[ind].openMultiple)) {
+        //如果已勾选或者为多选供应商 buyCount>0 ,则开启议价窗口
         if (this.productList[ind].sellerJson1[key].offline) {
           this.myToast("线上商品才能议价");
           return;
@@ -1540,7 +1648,9 @@ export default {
           productIndex: ind,
           storeIndex: key,
           purchaselistid: this.productList[ind].id,
-          storeid: this.list.data.purchasingCompanyList[key].storeid
+          storeid: this.list.data.purchasingCompanyList[key].storeid,
+          buyCount:this.productList[ind].sellerJson1[key].buyCount,
+          openMultiple:this.productList[ind].openMultiple
         });
         $(".yjModal .companyName").text(
           this.list.data.purchasingCompanyList[key].CompanyName
@@ -1550,6 +1660,47 @@ export default {
         $(".yjModal .historyPrice").text(this.productList[ind].HistoryPrice);
         $(".yjModal .input").val(this.productList[ind].sellerJson1[key].bargain);
         $(".yjModal").slideDown();
+      } else if(this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].buyCount==0){
+        //已经开启供应商多选且未选中此商品 buyCount的值为初始想购买的数量减去已经购买的数量
+        var initialBuyCount = this.productList[ind].BuyCount;
+        var hasOverdue = 0;
+        this.productList[ind].sellerJson1.forEach((p,k)=>{
+          initialBuyCount-=p.buyCount;
+          if(p && p.buyCount>0 && p.overdue && k!=key){
+            hasOverdue++;
+          }
+        })
+        //近效期数量变化
+        if(this.productList[ind].sellerJson1[key].overdue && hasOverdue==0){
+          this.list.data.CountSpxq++;
+        }
+        //console.log(initialBuyCount);
+        //当前选择的供应商库存大于未购买的数量  ...
+        if( this.productList[ind].sellerJson1[key].stock >= initialBuyCount && initialBuyCount>=0 ){
+          this.productList[ind].sellerJson1[key].buyCount = initialBuyCount || 1;
+        }else if( this.productList[ind].sellerJson1[key].stock < initialBuyCount && initialBuyCount>=0 ){
+          this.productList[ind].sellerJson1[key].buyCount = this.productList[ind].sellerJson1[key].stock;
+        }
+        if(initialBuyCount<0){
+          this.productList[ind].sellerJson1[key].buyCount = 1;
+        }
+        var price = this.productList[ind].sellerJson1[key].price;
+        this.list.data.purchasingCompanyList[key].Total+=price * this.productList[ind].sellerJson1[key].buyCount;
+        
+        var storeid = this.productList[ind].sellerJson1[key].storeid,
+            BuyCount = this.productList[ind].sellerJson1[key].buyCount,
+            bargain = this.productList[ind].sellerJson1[key].bargain,
+            id = this.productList[ind].id;
+
+        //修改节省金额
+        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+          var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].sellerJson1[key].buyCount;
+          this.list.data.SelectSavePriceAll +=save;
+          this.list.data.SelectPriceAll += this.productList[ind].sellerJson1[key].buyCount*this.productList[ind].sellerJson1[key].price;
+        }
+        //向服务器发送数据
+        this.multiplePost(id,storeid,BuyCount,bargain);
+
       }
     },
     //不可采产品tr禁用状态,input禁用,设置product的canBuy为false
@@ -1572,6 +1723,7 @@ export default {
         //this.productList[ind].isSelect=false;
       }
       this.productList[ind].BuyCount = val;
+      this.$set(this.productList,ind,this.productList[ind]);
 
       //计算超库存
       var price = null, //选中的商品的价格 供计算小计使用
@@ -1703,35 +1855,53 @@ export default {
       //取消勾选
       if (!e.target.checked) {
         //计算小计
- 
         this.productList.forEach((item, ind) => {
           var buyCount = item.BuyCount;
+          var hasOverdue = 0; //多选状态下近效期
           item.sellerJson1.forEach((product, index) => {
-            if (item.isSelect && product && product.selected) {
-              //console.log(this.list.data.purchasingCompanyList[index].Total);
-              this.list.data.purchasingCompanyList[index].Total = (
-                this.list.data.purchasingCompanyList[index].Total -
-                buyCount * product.price
-              ).toFixed(2);
-              this.list.data.purchasingCompanyList[index].Total = Number(
-                this.list.data.purchasingCompanyList[index].Total
-              );
+            if (item.isSelect && product && product.selected &&!item.openMultiple) {
+                //未开启多选供应商计算小计
+                this.list.data.purchasingCompanyList[index].Total = (
+                  this.list.data.purchasingCompanyList[index].Total -
+                  buyCount * product.price
+                ).toFixed(2);
+                this.list.data.purchasingCompanyList[index].Total = Number(
+                  this.list.data.purchasingCompanyList[index].Total
+                );
+              
               //if (item.outTop1) this.list.data.CountPurchaseSock--; //超库存
               if(buyCount>product.stock){
                 this.list.data.CountPurchaseSock--;
                 item.outTop1=false;
+                //this.$set(this.productList,ind,this.productList[ind])
               }
               if (product.overdue) this.list.data.CountSpxq--; //近效期
               //计算节省金额
-              if(item.HistoryPrice>0){
+              if(item.HistoryPrice>0 && !item.wrongPrice){
                 var save = (item.HistoryPrice-product.price)*buyCount;
                 this.list.data.SelectSavePriceAll -= save;
                 this.list.data.SelectPriceAll -= buyCount * product.price;
                 //console.log(this.list.data.SelectSavePriceAll,this.list.data.SelectPriceAll);
               }
 
+            }else if(item.isSelect && item.openMultiple && product && product.buyCount>0){
+              this.list.data.purchasingCompanyList[index].Total -= (product.price * product.buyCount);
+              if(item.multipleOutTop){
+                this.list.data.CountPurchaseSock--;
+                item.multipleOutTop = false;
+              }
+              //计算多选模式节省金额
+              var save = (item.HistoryPrice-product.price)*product.buyCount;
+              this.list.data.SelectSavePriceAll -=save;
+              this.list.data.SelectPriceAll -= product.buyCount*product.price;
+
+              if(product.overdue) hasOverdue++;
+              
+
             }
+
           });
+          if(hasOverdue>0) this.list.data.CountSpxq--;
         });
 
         // this.list.data.SelectSavePriceAll = 0;
@@ -1759,8 +1929,9 @@ export default {
       } else {
         this.productList.forEach((item, ind) => {
           var buyCount = item.BuyCount;
+          var hasOverdue = 0;
           item.sellerJson1.forEach((product, index) => {
-            if (product.canSelect && product.prevSelected && !item.isSelect) {
+            if (product.canSelect && product.prevSelected && !item.isSelect && !item.openMultiple) {
               var stock=product.stock;
               this.list.data.purchasingCompanyList[index].Total += buyCount * product.price;
               //if (item.outTop1) this.list.data.CountPurchaseSock++; 
@@ -1768,6 +1939,7 @@ export default {
                 this.list.data.CountPurchaseSock++;
                 item.outTop0=true;
                 item.outTop1=true;
+                //this.$set(this.productList,ind,this.productList[ind])
               }
               if (product.overdue) this.list.data.CountSpxq++; //近效期
               //计算节省金额
@@ -1776,8 +1948,23 @@ export default {
                 this.list.data.SelectSavePriceAll +=save;
                 this.list.data.SelectPriceAll += buyCount * product.price;
               }
+            }else if(product.canSelect && item.openMultiple && product.buyCount>0){
+              this.list.data.purchasingCompanyList[index].Total += product.buyCount * product.price;
+              if(product.buyCount > product.stock && !item.multipleOutTop){
+                this.list.data.CountPurchaseSock++;
+                item.multipleOutTop= true ;
+              }
+              //计算多选模式节省金额
+               var save = (item.HistoryPrice-product.price)*product.buyCount;
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += product.buyCount*product.price;
+
+              //计算多选近效期
+              if(product.overdue) hasOverdue++;
+
             }
           });
+          if(hasOverdue>0) this.list.data.CountSpxq++;
         });
 
         ////计算已选择商品数
@@ -1825,7 +2012,6 @@ export default {
       this.productList[ind].isSelect = e.target.checked;
       if (e.target.checked) {
         //勾选上
-
         //重新勾选上次选中的商品
         var productIndex = null,
           price = null,
@@ -1843,6 +2029,12 @@ export default {
             price = this.productList[ind].sellerJson1[i].price;
             stock = this.productList[ind].sellerJson1[i].stock;
           }
+          //sellerJson1中的buyCount >0 为多选商品 小计计算
+          if(this.productList[ind].sellerJson1[i]&&this.productList[ind].sellerJson1[i].buyCount>0){
+            //console.log('商品的下标为'+i+'buyCount为'+this.productList[ind].sellerJson1[i].buyCount);
+            this.list.data.purchasingCompanyList[i].Total += (this.productList[ind].sellerJson1[i].price * this.productList[ind].sellerJson1[i].buyCount);
+          }
+
         }
         
         //没有上次勾选的商品
@@ -1911,27 +2103,51 @@ export default {
 
         //小计变化
         if (productIndex != null) {
-          this.list.data.purchasingCompanyList[productIndex].Total +=
-            price * buyCount;
+          if(!this.productList[ind].openMultiple){
+            this.list.data.purchasingCompanyList[productIndex].Total += price * buyCount;
+          }
+          
           //更新对比价格
           this.productList[ind].Price=this.productList[ind].sellerJson1[productIndex].price;
           //近效期数量变化
-          if (this.productList[ind].sellerJson1[productIndex].overdue) {
+          if (this.productList[ind].sellerJson1[productIndex].overdue && !this.productList[ind].openMultiple) {
             this.list.data.CountSpxq++;
+          }else if(this.productList[ind].openMultiple){
+            var hasOverdue = 0;
+            this.productList[ind].sellerJson1.forEach((p,k)=>{
+              if(p && p.buyCount>0 && p.overdue){
+                hasOverdue++;
+              }
+            })
+            if(hasOverdue>0) this.list.data.CountSpxq++;
           }
           //计算节省金额
-          if(this.productList[ind].HistoryPrice>0){
+          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && !this.productList[ind].openMultiple){
             var save = (this.productList[ind].HistoryPrice-price)*buyCount;
             this.list.data.SelectSavePriceAll +=save;
             this.list.data.SelectPriceAll += price*buyCount;
+          }else if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && this.productList[ind].openMultiple){
+            this.productList[ind].sellerJson1.forEach((seller,sk)=>{
+                if(seller.buyCount > 0){
+                  var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[sk].price)*this.productList[ind].sellerJson1[sk].buyCount;
+                  this.list.data.SelectSavePriceAll +=save;
+                  this.list.data.SelectPriceAll += this.productList[ind].sellerJson1[sk].buyCount*this.productList[ind].sellerJson1[sk].price;
+                }
+ 
+            })
           }
         }
 
         //计算超库存
-        if (stock!=null && buyCount>stock) {
-          this.list.data.CountPurchaseSock++;
+        if (stock!=null && buyCount>stock && !this.productList[ind].openMultiple) {
+           this.list.data.CountPurchaseSock++;
           this.productList[ind].outTop0=true;
           this.productList[ind].outTop1=true;
+          //this.$set(this.productList,ind,this.productList[ind]);
+         // console.log(this.productList[ind]);
+        }
+        if(this.productList[ind].openMultiple && this.productList[ind].multipleOutTop){
+          this.list.data.CountPurchaseSock++;
         }
         //计算已选择商品数
         this.list.data.ProductCountSelect++;
@@ -1940,8 +2156,10 @@ export default {
         //计算已选择商品数
         this.list.data.ProductCountSelect--;
         //超库存数
-        if (this.productList[ind].outTop1) {
-          this.list.data.CountPurchaseSock--;
+        if ((this.productList[ind].outTop1 && !this.productList[ind].openMultiple) || (this.productList[ind].openMultiple && this.productList[ind].multipleOutTop)) {
+           this.list.data.CountPurchaseSock--;
+          this.productList[ind].outTop1 = false;
+          this.$set(this.productList,ind,this.productList[ind]);
         }
         var productIndex = null,
           price = null,
@@ -1955,22 +2173,51 @@ export default {
           } else if (ele) {
             ele.prevSelected = false;
           }
+          //buyCount > 0则为开启多选商品,计算多供应商商品小计变化
+          if(ele.buyCount>0){
+            this.list.data.purchasingCompanyList[i].Total -= ele.price*ele.buyCount;
+          }
+
         });
         //小计变化 小计减去当前购买数量*价格
         if (productIndex != null) {
-          //console.log(this.list.data.purchasingCompanyList[productIndex].Total);
-          this.list.data.purchasingCompanyList[productIndex].Total -=
-            price * buyCount;
-          //近效期数量变化
-          if (this.productList[ind].sellerJson1[productIndex].overdue) {
-            this.list.data.CountSpxq--;
+          //未开启多选的商品
+          if(!this.productList[ind].openMultiple){ //小计
+              this.list.data.purchasingCompanyList[productIndex].Total -= price * buyCount;
           }
-          //计算节省金额
-          if(this.productList[ind].HistoryPrice>0){
-            var save = (this.productList[ind].HistoryPrice-price)*this.productList[ind].BuyCount;
+          //节省变化
+          if(!this.productList[ind].openMultiple && this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+            var save = (this.productList[ind].HistoryPrice-price)*buyCount;
             this.list.data.SelectSavePriceAll -=save;
             this.list.data.SelectPriceAll -= price *buyCount;
+
+          }else if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && this.productList[ind].openMultiple){
+            this.productList[ind].sellerJson1.forEach((seller,sk)=>{
+                if(seller.buyCount > 0){
+                  var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[sk].price)*this.productList[ind].sellerJson1[sk].buyCount;
+                  this.list.data.SelectSavePriceAll -=save;
+                  this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[sk].buyCount*this.productList[ind].sellerJson1[sk].price;
+                }
+ 
+            })
           }
+          
+          //近效期数量变化
+          if (this.productList[ind].sellerJson1[productIndex].overdue && !this.productList[ind].openMultiple) {
+            this.list.data.CountSpxq--;
+          }else if(this.productList[ind].openMultiple){
+            var hasOverdue = 0;
+            this.productList[ind].sellerJson1.forEach((p,k)=>{
+              if(p && p.buyCount>0 && p.overdue){
+                hasOverdue++;
+              }
+            })
+            if(hasOverdue>0)  this.list.data.CountSpxq--;
+          }
+          //计算节省金额
+          // if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+            
+          // }
 
         }
       }
@@ -2580,6 +2827,7 @@ export default {
     },
     //点击提交订单按钮
     submitOrder() {
+      //console.log(this.outTopCount);
       if (this.list.data.CountPurchaseSock > 0) {
         $(".orderConfirm").fadeIn();
       } else if (
@@ -2654,6 +2902,219 @@ export default {
       //console.log(e.target.checked);
       this.list.data.IsMatchNotStock=!e.target.checked;
        console.log(this.list.data.IsMatchNotStock);
+    },
+    //鼠标移入td 显示供应商多选按钮
+    mouseOn(ind){
+      if(!this.productList[ind].openMultiple){
+        this.productList[ind].mouseOn = true;
+        this.$set(this.productList,ind,this.productList[ind]);
+      }
+    },
+    //鼠标移出 td 
+    mouseOff(ind){
+      if(!this.productList[ind].openMultiple){
+
+        this.productList[ind].mouseOn = false;
+        this.$set(this.productList,ind,this.productList[ind]);
+      }
+    },
+    //开启供应商多选,隐藏供应商多选按钮,超库存数--
+    startMultiple(ind){
+      var storeid = null,
+          BuyCount = null,
+          bargain = null,
+          id = this.productList[ind].id;
+
+      this.productList[ind].openMultiple = true;
+      this.$set(this.productList,ind,this.productList[ind]);
+
+      this.productList[ind].sellerJson1.forEach((ele,i)=>{
+        if(ele.selected) {
+          ele.buyCount=ele.stock;
+          storeid = ele.storeid;
+          BuyCount = ele.buyCount;
+          bargain = ele.bargain;
+          //减去之前的购买数量,加上现在的购买数量
+          this.list.data.purchasingCompanyList[i].Total-=(this.productList[ind].BuyCount*ele.price);
+          this.list.data.purchasingCompanyList[i].Total+=(ele.buyCount*ele.price);
+
+          //计算多选节省金额 , 减去之前节省金额 再加上现在的节省金额
+          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+            var preSave = (this.productList[ind].HistoryPrice - ele.price)*this.productList[ind].BuyCount;
+            this.list.data.SelectSavePriceAll -=preSave;
+            this.list.data.SelectPriceAll -= this.productList[ind].BuyCount * ele.price;
+            var save = (this.productList[ind].HistoryPrice - ele.price)*ele.buyCount;
+            this.list.data.SelectSavePriceAll += save;
+            this.list.data.SelectPriceAll += ele.buyCount * ele.price;
+          }
+          
+        }
+      })
+      //开启多供应商选择的商品,超库存按照各个供应商来计算
+      this.productList[ind].outTop1 = false;
+      this.$set(this.productList,ind,this.productList[ind]);
+
+      this.list.data.CountPurchaseSock--;
+
+      
+
+
+      //向服务器发送数据
+      this.multiplePost(id,storeid,BuyCount,bargain);
+
+    },
+    //鼠标移入多选标签,显示关闭标签
+    showClose(e){
+      e.target.className = "opened btn btn-danger btn-xs";
+      e.target.innerHTML = '关闭';
+    },
+    //鼠标移出关闭标签,显示多选标签
+    showOpen(e){
+      e.target.className = "opened btn btn-primary btn-xs";
+      e.target.innerHTML = '多选';
+    },
+    //关闭供应商多选,显示供应商多选按钮
+    closeMultiple(ind,e){
+      var storeid = null,
+          BuyCount = 0,
+          bargain = null,
+          id = this.productList[ind].id,
+          selectPrice = 0;
+      if(e.target.innerHTML=="关闭"){
+        this.productList[ind].openMultiple = false;
+        this.$set(this.productList,ind,this.productList[ind]);
+        this.productList[ind].sellerJson1.forEach((ele,i)=>{
+          if(ele.buyCount>0){
+            this.list.data.purchasingCompanyList[i].Total-=(ele.price*ele.buyCount);
+
+            //计算多选节省金额 , 减去之前节省金额 再加上现在的节省金额
+           if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+             var preSave = (this.productList[ind].HistoryPrice - ele.price)*ele.buyCount;
+              this.list.data.SelectSavePriceAll -=preSave;
+              this.list.data.SelectPriceAll -= ele.buyCount * ele.price;
+              var save = (this.productList[ind].HistoryPrice - selectPrice)*this.productList[ind].BuyCount;
+              this.list.data.SelectSavePriceAll += save;
+              this.list.data.SelectPriceAll += this.productList[ind].BuyCount * selectPrice;
+           }
+
+          }
+          if(ele.selected){
+            this.list.data.purchasingCompanyList[i].Total+=(ele.price*this.productList[ind].BuyCount);
+            storeid = ele.storeid;
+            bargain = ele.bargain;
+            selectPrice =  ele.price;
+          }
+          
+          
+          
+
+          ele.buyCount=0;
+        })
+        //关闭多选后,恢复原来的超库存(outTop0)
+        if(this.productList[ind].outTop0) this.list.data.CountPurchaseSock++;
+        this.productList[ind].outTop1 = this.productList[ind].outTop0;
+
+        //向服务器发送数据,请求老接口
+        var params = new URLSearchParams();
+        params.append("id", this.productList[ind].id);
+        params.append("BuyCount", this.productList[ind].BuyCount);
+        this.$http.post('/WebApi/PurchasePlanModifyBuyCount',params).then(res=>{
+          console.log(res)
+        }).catch(err=>{
+          this.myConfirm("网络错误,请重试!");
+        })
+        
+
+      }
+    },
+    //多供应商选中的购买数量
+    multipleCount(ind){
+      var multipleCount = 0;
+      this.productList[ind].sellerJson1.forEach((ele,i)=>{
+        multipleCount+=ele.buyCount;
+      })
+      var BuyCount =  this.productList[ind].BuyCount;
+      if(multipleCount>BuyCount){
+        return '<a href="javascript:;" style="color:red">'+multipleCount+'<a/>';
+      }else{
+        return '<a href="javascript:;" >'+multipleCount+'<a/>';
+      }
+      
+      // return multipleCount;
+    },
+    //开启多选后,修改购买数量
+    multipleClick(){
+
+    },
+    multipleBuyCountChange(ind,key,stock,e){
+      //console.log(this.productList[ind].sellerJson1[key].buyCount);
+      var lastBuyCount=this.productList[ind].sellerJson1[key].buyCount;
+      var nowVal = parseInt(e.target.value) || 0;
+
+      //多供应商购买不允许购买超过此供应商的库存数数量
+      var stock = this.productList[ind].sellerJson1[key].stock;
+      nowVal = Math.min(nowVal,stock);
+      
+      this.productList[ind].sellerJson1[key].buyCount=nowVal;
+      //判断修改之后是否超库存
+      if(nowVal>stock){   
+        if(!this.productList[ind].multipleOutTop){
+           this.list.data.CountPurchaseSock++;
+        }
+        this.productList[ind].multipleOutTop=true;
+        this.$set(this.productList,ind,this.productList[ind]);
+      }else if(nowVal<=stock){
+        var hasOutTop = 0;
+        this.productList[ind].sellerJson1.forEach((ele,i)=>{
+          if(ele.buyCount>ele.stock){
+            console.log(ele.buyCount);
+            hasOutTop++;
+          }
+        })
+        if(hasOutTop==0){
+          if(this.productList[ind].multipleOutTop){
+            this.list.data.CountPurchaseSock--;
+          }
+          this.productList[ind].multipleOutTop=false;
+          this.$set(this.productList,ind,this.productList[ind]);
+        }
+      }
+
+      //计算小计
+      var price = this.productList[ind].sellerJson1[key].price;
+      if(nowVal>lastBuyCount){
+          
+          var ce = nowVal -lastBuyCount;
+          this.list.data.purchasingCompanyList[key].Total+=(price*ce);
+      }else if(nowVal<lastBuyCount){
+
+          var ce = lastBuyCount - nowVal;
+          this.list.data.purchasingCompanyList[key].Total-=(price*ce);
+      }
+      var storeid = this.productList[ind].sellerJson1[key].storeid,
+          BuyCount = nowVal,
+          bargain = this.productList[ind].sellerJson1[key].bargain,
+          id = this.productList[ind].id;
+      //向服务器发送数据
+      this.multiplePost(id,storeid,BuyCount,bargain);
+
+    },
+    //多供应商购买请求函数
+    multiplePost(id,storeid,BuyCount,bargain){
+      var params = new URLSearchParams();
+      params.append("id", id);
+      params.append("storeid", storeid);
+      params.append("BuyCount", BuyCount);
+      params.append("bargain", bargain);
+      this.$http.post('/WebApi/PurchasePlanModifyBuyCountForMulti',params).then(res=>{
+        //console.log(res.data);
+      }).catch(err=>{
+        this.myConfirm("网络错误,请重试!");
+      })
+    },
+    //popover 近效期颜色
+    popColor(stock,spxq,overdue){
+      return `库存:${stock}<br/>效期:<span style="color:${overdue?'red':'#333'}">${spxq.slice(2)||'-'}</span>`;
     }
 
   },
@@ -2668,6 +3129,13 @@ export default {
         if(ele.Stock>0) this.showStock=1;
         if(ele.showMonthlySales>0) this.showMonthlySales=1;
         if(ele.HistoryPrice>0) this.showPrice=1;
+        
+        if( ele.HistoryPrice>0 && (ele.HistoryPrice*2<=ele.minPrice || ele.HistoryPrice >= 2*ele.minPrice) ){
+          ele.wrongPrice = true;
+        } else{
+          ele.wrongPrice = false;
+        }
+
       })
       //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
       var time = new Date();
@@ -2711,6 +3179,9 @@ export default {
               ele.sellerJson1[j].canSelect = canSelect;
               output[i] = ele.sellerJson1[j];
               output[i].prevSelected = output[i].selected ? true : false;
+              // if(output[i].selected){
+              //   output[i].buyCount = output[i].stock;
+              // }
               if (!ele.isSelect) output[i].selected = false; //如果商品列的checkbox未选中,那么对应企业的药品也不能选中
               //库存为0标识线下商品
               if (output[i].stock == 0) output[i].offline = true;
@@ -2732,14 +3203,25 @@ export default {
         if (hasSelect == 0) ele.isSelect = false;
         ele.sellerJson1 = output;
         //判断canbuy
-        for(var k=0,canBuy=0;k<ele.sellerJson1.length;k++){
+        for(var k=0,canBuy=0,multiple=0;k<ele.sellerJson1.length;k++){
           if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled) canBuy++;
+          if(ele.sellerJson1[k]!=undefined && ele.sellerJson1[k].buyCount>0) multiple++;
         }
         ele.canBuy = canBuy > 0 ? true : false;
+        ele.openMultiple = multiple>0 ? true : false;//是否已经开启多供应商
+        //ele.BuyCountMultiple = ele.BuyCount;
         
+        //能否开启供应商多选,商品不为多店状态,且供应商大于1
+        if(ele.BranchesCount==0 && canBuy>1){
+          ele.canMultiple = true;
+        }else{
+          ele.canMultiple = false;
+        }
+        ele.mouseOn = false;      //鼠标移入td
         
 
       });
+      //console.log(this.productList);
     }
   },
   computed: {
@@ -2780,6 +3262,15 @@ export default {
       var percent=(SelectSavePriceAll.toFixed(2)/this.list.data.SelectPriceAll.toFixed(2))*100||0;
       return SelectSavePriceAll.toFixed(2)+'  ， '+percent.toFixed(2)+'%';  
 
+    },
+    //计算超库存数量   无法使用,筛选过后不能只显示当前筛选的商品的超库存数量
+    outTopCount(){
+      var count=0;
+      this.productList.forEach((ele,i)=>{
+        ((ele.outTop1 && !ele.openMultiple)||(ele.openMultiple && ele.multipleOutTop && ele.isSelect) )?count++:'';
+    
+      })
+      return count;
     }
   }
 };
@@ -2893,9 +3384,10 @@ export default {
       > .check {
         > p {
           display: inline-block;
-          margin-right: 5px;
+          margin-right:6px;
           >label{
             font-weight: normal;
+            cursor: pointer;
           }
           > span {
             padding: 0 6px;
@@ -3076,6 +3568,9 @@ export default {
         background-color:#fff;
         tr {
           text-align: center;
+          &.multiple{
+            background-color:#FCF8E3;
+          }
           &.no_product {
             cursor: not-allowed;
             input {
@@ -3084,6 +3579,9 @@ export default {
           }
           > td {
             vertical-align: middle;
+            &.multiple{
+              background-color:#FCF8E3 !important;
+            }
             &:first-child {
               width: 40px;
               position: sticky;
@@ -3166,11 +3664,30 @@ export default {
                   border-color: red;
                 }
               }
+              >button.open{
+                position:absolute;
+                bottom:0;
+                left:10px;
+                border-radius: 0;
+              }
+              >button.opened,>button.stop{
+                position:absolute;
+                top:0;
+                right:0;
+                border-radius: 0;
+              }
+              // &:hover .open{
+              //   display: block;
+              // }
             }
             &.td_supplier {
               position: relative;
               padding: 0;
               width:92px;
+              input.out_top{
+                color: red;
+                border-color: red
+              }
               &.success {
                 cursor: pointer;
               }
@@ -3187,7 +3704,7 @@ export default {
                 padding: 10px;
                 padding-left:0;
                 > p {
-                  padding-right: 14px;
+                  padding-right: 6px;
                   margin: 0;
                 }
                 > i.icon {
