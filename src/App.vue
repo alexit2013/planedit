@@ -166,6 +166,7 @@
                       <button @click="startMatch(index)" v-else class="btn btn-block btn-danger">启用匹配</button>
                     </a>
                   </div>
+                  <span v-if="list.data.PreferredSupplier == item.storeid" data-toggle="tooltip" data-placement="top" title="主供应商" ></span>
                 </th>
               </tr>
             </thead>
@@ -218,7 +219,7 @@
                 <!-- 药企对应商品 -->
                 <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
                   <!-- 有商品 -->
-                  <div v-if="item" @click.stop="product_choose(ind,key,product.BuyCount,item.price)" :data-toggle="product.openMultiple&&item.buyCount>0&&'popover'" data-placement="bottom" :data-content="popColor(item.stock,item.spxq,item.overdue)">
+                  <div v-if="item" @click.stop="product_choose(ind,key,product.BuyCount,item.price)" @mouseenter="showPopOver(product,item,$event)" @mouseleave="closePopOver($event)" >
                     <i class="icon" v-show="(!product.openMultiple&&item.selected&&product.isSelect) || (item.buyCount>0 && product.openMultiple&&product.isSelect)" @click.stop="cancel_select(ind,key,product.BuyCount,item.price)">
                       <span class="fa fa-check"></span>
                     </i>
@@ -239,6 +240,8 @@
                   <div v-else>
                     -
                   </div>
+                  <!-- popover -->
+                  <p style="display:none;">较主供应商价格 + 10%</p>
                 </td>
               
               </tr>
@@ -327,6 +330,38 @@
                       <br>
                       <label class="input"><input :checked="!list.data.IsMatchNotStock" @click="changeIsMatchNotStock($event)" type="checkbox" name="IsNoStock"> 库存不足不选</label> <span data-toggle="tooltip" title="" class="fa fa-question-circle" data-original-title="不选库存不满采购量的供应商"></span>
                   </div>
+              </div>
+              <a href="#setting" class="btn btn-primary" data-toggle="collapse">
+                  高级选项
+                  <span class="caret"></span>
+              </a>
+              <div id='setting' class="collapse" style="padding-top:10px;" >
+                <div class="form-inline"> 
+                    <div class="form-group">
+                        <label for="">主供应商</label>
+                        <div style="display:inline-block;">
+                          <select class="form-control" name="PreferredSupplier" id="">
+                            <option value="0">未选择</option>
+                            <option v-for="(item,index) in filterCompanyName" :key="index" :selected="item.storeid == list.data.PreferredSupplier" :value="item.storeid" >{{item.CompanyName}}</option>
+                          </select>
+                        </div>
+                        <span class="fa fa-question-circle" data-toggle="tooltip" data-original-title="所有商品优先从主供应商选择"></span>
+                    </div>
+                  </div>
+                  <div class="form-inline">
+                    <div class="form-group">
+                        <label for="">例外条件</label>
+                        <input name="exception" value='0' type="radio" checked>无
+                    </div>
+                </div>
+                <div class="form-inline">
+
+                    <div class="form-group">
+                        <label style="width:56px;" for="">&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                        <input name="exception" value='1' type="radio">
+                        主供应商价格高于最低价<input v-model.number="list.data.LimitPercentage" disabled='true' class="percent" style="width:44px;" type="text"> % 则选择最低价
+                    </div>
+                </div>
               </div>
           </div>
           <div class="modal-footer">
@@ -890,11 +925,15 @@ export default {
       );
       var habit =
         Number($("#cg_preference input[name='habit']:checked").val()) || 0;
+      
+      var PreferredSupplier = Number( $("#cg_preference select[name='PreferredSupplier'] option:selected").val() );
       var params = new URLSearchParams();
       params.append("PurchaseId", this.id);
       params.append("IsNoStock", IsNoStock);
       params.append("IsJxq", IsJxq);
       params.append("habit", habit);
+      params.append('PreferredSupplier',PreferredSupplier);
+      params.append('LimitPercentage',this.list.data.LimitPercentage);
       this.showLoading = true;
       this.$http
         .post("/WebApi/PurchasePerferenceSett", params)
@@ -1093,6 +1132,19 @@ export default {
     // }else{
     //   $('th:eq(2)').removeClass();
     // }
+
+    //采购偏好设置中例外条件
+    //console.log( $("input[name='exception']") );
+    $("input[name='exception']").change((e)=>{
+      //console.log(111)
+        var $this =  $(e.target);
+        if($this.val()==1){
+            $('#cg_preference input.percent').prop('disabled',false);
+        }else{
+            $('#cg_preference input.percent').prop('disabled',true);
+            this.list.data.LimitPercentage = 0;
+        }
+    })
 
   },
   methods: {
@@ -1499,6 +1551,12 @@ export default {
           if (ele && ele.selected) {
             hasSelect++;
             preSelectIndex = i; //之前选中的商品的下标
+            if(i!==key){
+              //小计更新
+              var price = ele.price,
+                buyCount = this.productList[ind].BuyCount;
+              this.list.data.purchasingCompanyList[i].Total -= price * buyCount;
+            }
           }
           if (i == key) {
             ele.selected = true;
@@ -1525,7 +1583,7 @@ export default {
                 this.productList[ind].outTop1 = false;
               }
             } else {
-              if (this.productList[ind].outTop0 && !ele.offline) {
+              if (this.productList[ind].outTop1 && !ele.offline) {
                 this.list.data.CountPurchaseSock--;
                 this.productList[ind].outTop0 = false;
                 this.productList[ind].outTop1 = false;
@@ -1545,10 +1603,7 @@ export default {
             if (ele && ele.prevSelected) {
               // bargain=ele.bargain;
               // ele.bargain=0;
-              //小计更新
-              var price = ele.price,
-                buyCount = this.productList[ind].BuyCount;
-              this.list.data.purchasingCompanyList[i].Total -= price * buyCount;
+              
             }
             ele.selected = false;
             ele.prevSelected = false;
@@ -3115,6 +3170,42 @@ export default {
     //popover 近效期颜色
     popColor(stock,spxq,overdue){
       return `库存:${stock}<br/>效期:<span style="color:${overdue?'red':'#333'}">${spxq.slice(2)||'-'}</span>`;
+    },
+    showPopOver(product,item,e){
+      var nextP = $(e.target).next();
+      var isMain = this.list.data.PreferredSupplier>0;
+      var str = '',
+          percent = 0;
+      product.sellerJson1.forEach((ele,i)=>{
+        if(ele.storeid == this.list.data.PreferredSupplier){
+          percent = (Math.abs(item.price - ele.price) / ele.price *100).toFixed(2);
+          str += item.price - ele.price > 0 ? '+' : '-';
+          str += percent;
+          str += '%';
+        }
+      })
+      if(product.openMultiple && item.buyCount>0 && isMain){
+        if( item.storeid != this.list.data.PreferredSupplier ){
+          nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span><br/>${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
+        }else{
+          nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+        }
+        
+      }else if(product.openMultiple && item.buyCount>0 && !isMain){
+        nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+      }else if(!product.openMultiple && isMain && item.storeid != this.list.data.PreferredSupplier ){
+        if(str.length>0){
+          nextP.html(`${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
+        }
+        
+      }else if(!product.openMultiple && !isMain){
+
+      }
+
+    },
+    closePopOver(e){
+      var nextP = $(e.target).next();
+      if(nextP) nextP.hide();
     }
 
   },
@@ -3271,6 +3362,12 @@ export default {
     
       })
       return count;
+    },
+    //采购偏好设置中的高级选项下拉选择
+    filterCompanyName(){
+      return this.list.data.purchasingCompanyList.filter((item)=>{
+        return item.storeid>0;
+      })
     }
   }
 };
@@ -3560,6 +3657,14 @@ export default {
               font-weight: normal;
             }
           }
+          >span{
+            position: absolute;
+            right: 0;
+            top: 0;
+            border: 10px solid #ee1d24;
+            border-left-color: transparent;
+            border-bottom-color: transparent;
+          }
         }
       }
       > .product_container {
@@ -3750,6 +3855,34 @@ export default {
                       }
                     }
                   }
+                }
+              }
+              >p{
+                width: 188px;
+                position: absolute;
+                bottom: -90px;
+                z-index: 200;
+                left: -40px;
+                line-height: 20px;
+                height: 80px;
+                background-color: #fff;
+                border: 1px solid #ddd;
+                padding-top:10px;
+                text-align: center;
+                border-radius: 8px;
+                &:after{
+                  content:'';
+                  display: inline-block;
+                  position:absolute;
+                  top:-10px;
+                  left:70px;
+                  width:20px;
+                  height: 20px;
+                  border:1px solid #ddd;
+                  border-right-color: #fff;
+                  border-bottom-color: #fff;
+                  background-color: #fff;
+                  transform: rotate(45deg);
                 }
               }
             }
