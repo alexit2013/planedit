@@ -122,7 +122,7 @@
           <!-- 右侧按钮选择排序 -->
           <div class="shortcut text-right col-xs-12 col-md-6">
             <button @click="reset" class="btn btn-info glyphicon glyphicon-refresh">重置</button>
-            <button data-toggle="modal" data-target="#cg_preference"  class="btn btn-primary glyphicon glyphicon-cog">采购偏好</button>
+            <button @click="showCGPH=true" data-toggle="modal" data-target="#cg_preference"  class="btn btn-primary glyphicon glyphicon-cog">采购偏好</button>
             <button @click="chooseLow" class="btn btn-primary glyphicon glyphicon-check">全选最低价</button>
             <button @click="addStore" data-toggle="modal"  data-target="#addStore" class="btn btn-primary glyphicon glyphicon-plus">添加匹配店铺</button>
             <span class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
@@ -137,11 +137,11 @@
           <table class=" table table-bordered" v-if="list">
             <thead>
               <tr>
-                <th>
-                  <input type="checkbox" @click="selectAll($event)" class="checkall" vale="all" v-model="checkall" >
+                <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE}">
+                  <input type="checkbox" @click="selectAll($event)" class="checkall" :class="{'oldChrome':(isChrome && isChrome<56) || isIE}" vale="all" v-model="checkall" >
                 </th>
-                <th>商品</th>
-                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0}">
+                <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE}">商品</th>
+                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0,'oldChrome':(isChrome && isChrome<56) || isIE}">
                   库存信息
                   <ul class="clear">
                     <li class="lf" v-if="showStock">库存</li>
@@ -149,7 +149,7 @@
                     <li class="lf">参考价</li>
                   </ul>
                 </th>
-                <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow}">
+                <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'oldChrome':(isChrome && isChrome<56) || isIE}">
                   采购数量
                 </th>
                 <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
@@ -175,7 +175,7 @@
           <!-- 采购详情内容 -->
           <table class="product_container table table-bordered table-hover">
             <tbody v-if="productList.length>0">
-              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple}">
+              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE}">
                 <td :class="{'multiple':product.openMultiple}">
                   <input type="checkbox" @click="selectOne($event,ind)" v-model="product.isSelect" :disabled="!product.canBuy">
                 </td>
@@ -242,6 +242,8 @@
                   </div>
                   <!-- popover -->
                   <p style="display:none;">较主供应商价格 + 10%</p>
+                  <!-- 主供应商 较最低价  百分比   -->
+                  <span v-if="!product.openMultiple && item && item.price > product.minPrice && item.storeid == list.data.PreferredSupplier">{{'+'+((item.price-product.minPrice)/product.minPrice*100).toFixed(2)+'%'}}</span>
                 </td>
               
               </tr>
@@ -312,7 +314,7 @@
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title" id="myModalLabel">采购偏好设置</h4>
           </div>
-          <div v-if="list" class="modal-body">
+          <div v-if="list && showCGPH" class="modal-body">
               <div class="form-group row">
                   <label class="col-sm-4">相同价格：</label>
                   <div class="col-sm-8">
@@ -331,42 +333,42 @@
                       <label class="input"><input :checked="!list.data.IsMatchNotStock" @click="changeIsMatchNotStock($event)" type="checkbox" name="IsNoStock"> 库存不足不选</label> <span data-toggle="tooltip" title="" class="fa fa-question-circle" data-original-title="不选库存不满采购量的供应商"></span>
                   </div>
               </div>
-              <a href="#setting" class="btn btn-primary" data-toggle="collapse">
-                  高级选项
+              <a @click="toggleOpen($event)"  href="#setting" class="toggleBtn btn btn-default" data-toggle="collapse">
+                  高级选项(选填)
                   <span class="caret"></span>
               </a>
               <div id='setting' class="collapse" style="padding-top:10px;" >
-                <div class="form-inline"> 
-                    <div class="form-group">
-                        <label for="">主供应商</label>
-                        <div style="display:inline-block;">
-                          <select class="form-control" name="PreferredSupplier" id="">
-                            <option value="0">未选择</option>
-                            <option v-for="(item,index) in filterCompanyName" :key="index" :selected="item.storeid == list.data.PreferredSupplier" :value="item.storeid" >{{item.CompanyName}}</option>
+                    <div class="form-group row">
+                        <label class="col-sm-4" for="">主供应商</label>
+                        <div class="col-sm-7" style="display:inline-block;">
+                          <select @change="PreferredSupplierChange($event)" class="form-control" name="PreferredSupplier" id="">
+                            <option value="0" :selected="list.data.PreferredSupplier == 0">未选择</option>
+                            <option v-for="(item,index) in filterCompanyName" :key="index"  :value="item.storeid" :selected="list.data.PreferredSupplier == item.storeid" >{{item.CompanyName}}</option>
                           </select>
                         </div>
                         <span class="fa fa-question-circle" data-toggle="tooltip" data-original-title="所有商品优先从主供应商选择"></span>
                     </div>
-                  </div>
-                  <div class="form-inline">
-                    <div class="form-group">
-                        <label for="">例外条件</label>
-                        <input name="exception" value='0' type="radio" checked>无
-                    </div>
-                </div>
-                <div class="form-inline">
 
                     <div class="form-group">
-                        <label style="width:56px;" for="">&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <input name="exception" value='1' type="radio">
-                        主供应商价格高于最低价<input v-model.number="list.data.LimitPercentage" disabled='true' class="percent" style="width:44px;" type="text"> % 则选择最低价
+                        <label style="margin-right:15px;" class="col-sm-4" for="">例外条件</label>
+                        <label style="font-weight:normal;"><input name="exception" value='0' type="radio" :checked="list.data.LimitPercentage<=0" :disabled="list.data.PreferredSupplier==0">
+                        无
+                        </label>
                     </div>
-                </div>
+
+
+                    <div class="form-group row">
+                        <label style="margin-right:15px;" class="col-sm-4"  for="">&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                        <label style="font-weight:normal;" ><input name="exception" value='1' type="radio" :checked="list.data.LimitPercentage>0" :disabled="list.data.PreferredSupplier==0" >
+                        主供应商价格高于最低价<input :value="list.data.LimitPercentage" :disabled='list.data.LimitPercentage<=0' class="percent" style="width:44px;" type="text"> % 则选择最低价
+                        </label>
+                    </div>
+ 
               </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-            <button type="button" class="post btn btn-primary">保存</button>
+            <button type="button" @click="showCGPH=false" class="btn btn-default" data-dismiss="modal">取消</button>
+            <button type="button"  @click="showCGPH=false" class="post btn btn-primary">保存</button>
           </div>
         </div>
       </div>
@@ -613,10 +615,16 @@ export default {
       userList:null,
       isLogin:false,
       modalCompanyChange:false,   //打开模态框中添加或删除店铺是否点击
-      navbarHtml:''                //动态获取navbar代码片段
+      navbarHtml:''  ,              //动态获取navbar代码片段
+      isChrome:false,
+      isIE:false,
+      showCGPH:false,              //点开采购偏好模态框
     };
   },
   created() {
+    //判断chrome浏览器的版本,小于等于55不支持sticky
+    this.isChrome = this.getChromeVersion();
+    this.isIE = this.IEBrowser();
     //console.log(this.list);
     //获取用户登录信息
     this.$http.post('/WebApi/GetUserInfo').then(res=>{
@@ -697,7 +705,9 @@ export default {
     });
     //3.保存
     $(".yjModal").on("click", ".post", e => {
+      
       var $this = $(e.target);
+     
       // console.log($this.data('productIndex'));
       // console.log($this.data('storeIndex'));
       var productIndex = $this.data("productIndex"),
@@ -709,8 +719,7 @@ export default {
       //console.log(bargain);
       this.productList[productIndex].sellerJson1[storeIndex].bargain = bargain;
       if (!isNaN(bargain)) {
-        
-        if($(this).data('openMultiple')== true){
+        if($this.data('openMultiple')!= true){
           var params = new URLSearchParams();
           params.append("purchaselistid", purchaselistid);
           params.append("storeid", storeid);
@@ -920,13 +929,19 @@ export default {
       var IsNoStock = Number(
         !$("#cg_preference input[name='IsNoStock']").is(":checked")
       );
+      this.list.data.IsMatchNotStock = Boolean(IsNoStock);
       var IsJxq = Number(
         !$("#cg_preference input[name='IsJxq']").is(":checked")
       );
+       this.list.data.IsMatchJxq = Boolean(IsJxq);
       var habit =
         Number($("#cg_preference input[name='habit']:checked").val()) || 0;
+      this.list.data.PriceEqual = habit;
       
       var PreferredSupplier = Number( $("#cg_preference select[name='PreferredSupplier'] option:selected").val() );
+      var LimitPercentage = Number( $("#cg_preference .percent").val() ) || 0;
+      this.list.data.PreferredSupplier = PreferredSupplier;
+      this.list.data.LimitPercentage = LimitPercentage;
       var params = new URLSearchParams();
       params.append("PurchaseId", this.id);
       params.append("IsNoStock", IsNoStock);
@@ -1080,7 +1095,7 @@ export default {
     var scrollLeft=0;
     $(window).scroll((e)=> {
       var $this=$(e.target);
-      //console.log('正在滚动');
+
       scrollLeft=$this.scrollLeft();
       //console.log(scrollLeft);
       if(scrollLeft>10){
@@ -1103,9 +1118,41 @@ export default {
         $box.removeClass('helpFixed');
       }
     });
+    
+    var ID = this.id;
+    window.onbeforeunload=function(){
+      if($(window).scrollTop() > 200){
+        localStorage[ID] = $(window).scrollTop();
+      }
+      
+    }
+
+    //console.log('已挂载');
+    var top = localStorage[ID];
+    var moveTimer = null;
+    var that = this;
+    if(top > 0){
+      moveTimer = setInterval(function(){
+        if( $(window).scrollTop() == top){
+          clearInterval(moveTimer);
+          moveTimer = null;
+        }else{
+          $('html:not(:animated)').animate({
+            scrollTop:top
+          },500,()=>{
+            that.myToast('为您滚动至上次浏览位置...')
+          })
+        }
+      },500)
+    }
+
+    //cg_preference模态框关闭事件 将showCGPH 置为false
+    $('#cg_preference').on('hidden.bs.modal',()=>{
+      this.showCGPH = false;
+    })
 
   },
-  updated() {
+  updated() { 
     //启用tooltip
     $("[data-toggle='tooltip']").tooltip();
     //启用popover
@@ -1148,6 +1195,28 @@ export default {
 
   },
   methods: {
+    //获取谷歌浏览器版本
+    getChromeVersion() {
+      var arr = navigator.userAgent.split(' '); 
+      var chromeVersion = '';
+      for(var i=0;i < arr.length;i++){
+          if(/chrome/i.test(arr[i]))
+          chromeVersion = arr[i]
+      }
+      if(chromeVersion){
+          return Number(chromeVersion.split('/')[1].split('.')[0]);
+      } else {
+          return false;
+      }
+    },
+    //判断是否为IE
+    IEBrowser(){
+      if(!!window.ActiveXObject || "ActiveXObject" in window){
+        return true;
+      }else{
+        return false;
+      }
+    },
     //请求数据函数
     getData() {
       this.showLoading = true;
@@ -1616,7 +1685,7 @@ export default {
             this.list.data.CountSpxq++;
           }
           //计算节省金额
-          if(this.productList[ind].HistoryPrice>0){
+          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
             //当修改后的购买数量大于之前的购买数量
               var save= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[key].price);
               this.list.data.SelectSavePriceAll +=save;
@@ -1638,7 +1707,7 @@ export default {
           }
 
           //计算节省金额
-          if(this.productList[ind].HistoryPrice>0){
+          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
             //当修改后的购买数量大于之前的购买数量
               var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[preSelectIndex].price);
               this.list.data.SelectSavePriceAll -=preSave;
@@ -2949,14 +3018,16 @@ export default {
     //changeIsMatchJxq 改变是否匹配近效期
     changeIsMatchJxq(e){
       //console.log(e.target.checked);
-      this.list.data.changeIsMatchJxq=!e.target.checked;
-      console.log(this.list.data.changeIsMatchJxq);
+      //this.list.data.changeIsMatchJxq=!e.target.checked;
+      //console.log(this.list.data.changeIsMatchJxq);
+       //console.log(this.list.data.PriceEqual);
     },
     // 改变数据中是否匹配超库存的值
     changeIsMatchNotStock(e){
       //console.log(e.target.checked);
-      this.list.data.IsMatchNotStock=!e.target.checked;
-       console.log(this.list.data.IsMatchNotStock);
+      //this.list.data.IsMatchNotStock=!e.target.checked;
+      //console.log(this.list.data.PriceEqual);
+       //console.log(this.list.data.IsMatchNotStock);
     },
     //鼠标移入td 显示供应商多选按钮
     mouseOn(ind){
@@ -3178,7 +3249,7 @@ export default {
           percent = 0;
       product.sellerJson1.forEach((ele,i)=>{
         if(ele.storeid == this.list.data.PreferredSupplier){
-          percent = (Math.abs(item.price - ele.price) / ele.price *100).toFixed(2);
+          percent = (Math.abs(ele.price - item.price) / item.price *100).toFixed(2);
           str += item.price - ele.price > 0 ? '+' : '-';
           str += percent;
           str += '%';
@@ -3194,8 +3265,8 @@ export default {
       }else if(product.openMultiple && item.buyCount>0 && !isMain){
         nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
       }else if(!product.openMultiple && isMain && item.storeid != this.list.data.PreferredSupplier ){
-        if(str.length>0){
-          nextP.html(`${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
+        if(str.length>0 && percent>0){
+          nextP.html(`较主供应商价格 ${str}`).show();
         }
         
       }else if(!product.openMultiple && !isMain){
@@ -3206,6 +3277,20 @@ export default {
     closePopOver(e){
       var nextP = $(e.target).next();
       if(nextP) nextP.hide();
+    },
+    toggleOpen(e){
+      $(e.target).toggleClass('open');
+    },
+    //采购偏好中主供应商下拉框change事件
+    PreferredSupplierChange(e){
+      var val = $(e.target).children('option:selected').val();
+      if(val <= 0){
+        $("#cg_preference input[name='exception'][value='0']").prop('checked',true);
+        $('#cg_preference .percent').val(0);
+        $("#cg_preference input[name='exception']").prop('disabled',true);
+      }else{
+        $("#cg_preference input[name='exception']").prop('disabled',false);
+      }
     }
 
   },
@@ -3525,6 +3610,10 @@ export default {
           text-align: center;
           vertical-align: middle;
           height:56px;
+          &.oldChrome{
+            position: relative !important;
+            left:0 !important;
+          }
         }
         th:first-child {
           width: 40px;
@@ -3673,6 +3762,13 @@ export default {
         background-color:#fff;
         tr {
           text-align: center;
+          &.oldChrome{
+              >td:nth-child(-n+6){
+                position: relative !important;
+                left:0 !important;
+              }
+              
+          }
           &.multiple{
             background-color:#FCF8E3;
           }
@@ -3687,6 +3783,7 @@ export default {
             &.multiple{
               background-color:#FCF8E3 !important;
             }
+            
             &:first-child {
               width: 40px;
               position: sticky;
@@ -3862,7 +3959,7 @@ export default {
                 position: absolute;
                 bottom: -90px;
                 z-index: 200;
-                left: -40px;
+                left: -90px;
                 line-height: 20px;
                 height: 80px;
                 background-color: #fff;
@@ -3875,7 +3972,7 @@ export default {
                   display: inline-block;
                   position:absolute;
                   top:-10px;
-                  left:70px;
+                  left:100px;
                   width:20px;
                   height: 20px;
                   border:1px solid #ddd;
@@ -3884,6 +3981,15 @@ export default {
                   background-color: #fff;
                   transform: rotate(45deg);
                 }
+              }
+              >span{
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                font-size: 12px;
+                color: red;
+                padding:2px;
+                background-color: rgba(0,0,0,0.2);
               }
             }
           }
@@ -4112,5 +4218,15 @@ export default {
   margin: auto;
   background-color: rgba(0, 0, 0, 0.35);
   color: #fff;
+}
+#cg_preference{
+  .toggleBtn{
+    &.open{
+      >.caret{
+        border-bottom:4px dashed;
+        border-top:none !important;
+      }
+    }
+  }
 }
 </style>
