@@ -104,17 +104,17 @@
                 排序
               </button>
               <ul class="sort dropdown-menu">
-                <li class="active" @click="defaultSort($event)">
+                <li :class="{'active':sorting==0}" @click="defaultSort($event)">
                   <a href="javascript:;">默认排序</a>
                 </li>
-                <li data-num='1' @click="zjSort($event)">
-                  <a href="javascript:;">按参考价同供应价 <b>总价</b> 差额排序<i style="margin-left:6px;" class=""></i></a>
+                <li :class="{'active':sorting==1 || sorting==2}" data-num='1' @click="zjSort($event)">
+                  <a href="javascript:;">按参考价同供应价 <b>总价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==1,'fa fa-sort-down':sorting==2}"></i></a>
                 </li>
-                <li data-num='1' @click="djSort($event)">
-                  <a href="javascript:;">按参考价同供应价 <b>单价</b> 差额排序<i style="margin-left:6px;" class=""></i></a>
+                <li :class="{'active':sorting==3 || sorting==4}" data-num='1' @click="djSort($event)">
+                  <a href="javascript:;">按参考价同供应价 <b>单价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==3,'fa fa-sort-down':sorting==4}"></i></a>
                 </li>
-                <li data-num='1' @click="countSort($event)">
-                  <a href="javascript:;">按采购数量排序<i style="margin-left:6px;" class=""></i></a>
+                <li :class="{'active':sorting==5 || sorting==6}" data-num='1' @click="countSort($event)">
+                  <a href="javascript:;">按采购数量排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==5,'fa fa-sort-down':sorting==6}"></i></a>
                 </li>
               </ul>
             </p>
@@ -514,7 +514,7 @@
         <h4 class="title">信息
           <span @click="closeOrder" class="shut rf">&times;</span>
         </h4>
-        <p class="info" v-if="list">有&nbsp;{{outTopCount}}&nbsp;个品种超出了库存数量，不能提交订单。</P>
+        <p class="info" v-if="list">有&nbsp;{{this.list.data.CountPurchaseSock}}&nbsp;个品种超出了库存数量，不能提交订单。</P>
         <p class="text-right">
           <button @click="closeOrder" class="btn btn-default">确定</button>
           <button @click="checkOverStock" class="btn btn-primary">查看</button>
@@ -647,8 +647,9 @@ export default {
     }).then(res=>{
       this.navbarHtml = res.data;
     })
-
+    
     this.id = location.search.slice(4);
+    if(localStorage[this.id+'sorting']) this.sorting = Number(localStorage[this.id+'sorting']);
     this.getData();
   },
   mounted() {
@@ -1094,6 +1095,9 @@ export default {
     var left=$fixed_top.offset().left-8;//顶部固定条距离窗口左侧的距离
     var scrollLeft=0;
     $(window).scroll((e)=> {
+      clearInterval(moveTimer);
+      moveTimer = null;
+
       var $this=$(e.target);
 
       scrollLeft=$this.scrollLeft();
@@ -1119,32 +1123,36 @@ export default {
       }
     });
     
-    var ID = this.id;
-    window.onbeforeunload=function(){
-      if($(window).scrollTop() > 200){
-        localStorage[ID] = $(window).scrollTop();
+    window.onbeforeunload=()=>{
+      if(this.showCanBuy && !this.OverStock && !this.PurchaseSpxq && !this.PriceChange){
+    
+        localStorage[ this.id] = $(window).scrollTop();
+
+        localStorage[this.id+'sorting'] = this.sorting;
+      }else{
+        localStorage[ this.id] = 0;
       }
-      
     }
 
-    //console.log('已挂载');
-    var top = localStorage[ID];
+    // 滚动至上次浏览位置
+    var top = localStorage[ this.id];
     var moveTimer = null;
     var that = this;
     if(top > 0){
       moveTimer = setInterval(function(){
-        if( $(window).scrollTop() == top){
+        var hasScroll = $(window).scrollTop();
+        if( hasScroll == top ){
           clearInterval(moveTimer);
           moveTimer = null;
+          that.myToast('已为您滚动至上次浏览位置!')
         }else{
           $('html:not(:animated)').animate({
             scrollTop:top
-          },500,()=>{
-            that.myToast('为您滚动至上次浏览位置...')
-          })
+          },500)
         }
       },500)
     }
+
 
     //cg_preference模态框关闭事件 将showCGPH 置为false
     $('#cg_preference').on('hidden.bs.modal',()=>{
@@ -1581,6 +1589,8 @@ export default {
             });
 
         }else{
+          this.productList[ind].sellerJson1[key].selected = false;
+          this.productList[ind].sellerJson1[key].preSelected = false;
           if(overdue == 1 && this.productList[ind].sellerJson1[key].overdue) this.list.data.CountSpxq--;
           //向服务器发送数据
           var storeid = this.productList[ind].sellerJson1[key].storeid,
@@ -1589,15 +1599,17 @@ export default {
               id = this.productList[ind].id;
           this.multiplePost(id,storeid,BuyCount,bargain);
         }
+
+        //计算节省金额
+          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
+            var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].sellerJson1[key].buyCount;
+            this.list.data.SelectSavePriceAll -=save;
+            this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[key].buyCount*this.productList[ind].sellerJson1[key].price;
+          }
         //console.log(ind,key);
         this.productList[ind].sellerJson1[key].buyCount=0;
         
-         //计算节省金额
-        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-          var save = (this.productList[ind].HistoryPrice-this.productList[ind].sellerJson1[key].price)*this.productList[ind].sellerJson1[key].buyCount;
-          this.list.data.SelectSavePriceAll -=save;
-          this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[key].buyCount*this.productList[ind].sellerJson1[key].price;
-        }
+         
 
       }
     },
@@ -1666,14 +1678,16 @@ export default {
             this.list.data.purchasingCompanyList[key].Total += price * buyCount;
             //更改产品历史价格
             this.productList[ind].Price = price;
+            
+            //判断wrongPrice
+            if(this.productList[ind].HistoryPrice > 0 && (this.productList[ind].HistoryPrice >= this.productList[ind].Price * 2 || this.productList[ind].Price >= this.productList[ind].HistoryPrice * 2)){
+              this.productList[ind].wrongPrice = true;
+            }else{
+              this.productList[ind].wrongPrice = false;
+            }
 
 
           } else {
-            if (ele && ele.prevSelected) {
-              // bargain=ele.bargain;
-              // ele.bargain=0;
-              
-            }
             ele.selected = false;
             ele.prevSelected = false;
           }
@@ -1707,12 +1721,20 @@ export default {
           }
 
           //计算节省金额
+          //减去之前商品的节省金额
+          if(this.productList[ind].HistoryPrice > 0 && (this.productList[ind].HistoryPrice >=  this.productList[ind].sellerJson1[preSelectIndex].price*2 ||  this.productList[ind].sellerJson1[preSelectIndex].price >= this.productList[ind].HistoryPrice*2)){
+              //之前选中也是wrongPrice价格
+          }else{
+            var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[preSelectIndex].price);
+            this.list.data.SelectSavePriceAll -=preSave;
+            this.list.data.SelectPriceAll -= this.productList[ind].BuyCount * this.productList[ind].sellerJson1[preSelectIndex].price;
+          }
+          
+           
+
+
           if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
             //当修改后的购买数量大于之前的购买数量
-              var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[preSelectIndex].price);
-              this.list.data.SelectSavePriceAll -=preSave;
-              this.list.data.SelectPriceAll -= this.productList[ind].BuyCount * this.productList[ind].sellerJson1[preSelectIndex].price;
-
               var nowSave = this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - this.productList[ind].sellerJson1[key].price);
               this.list.data.SelectSavePriceAll +=nowSave;
               this.list.data.SelectPriceAll += this.productList[ind].BuyCount * this.productList[ind].sellerJson1[key].price;
@@ -1767,7 +1789,8 @@ export default {
           this.myToast("线上商品才能议价");
           return;
         }
-
+        console.log(this.productList[ind].sellerJson1[key].buyCount);
+        console.log(this.productList[ind].openMultiple);
         $(".yjModal .post").data({
           productIndex: ind,
           storeIndex: key,
@@ -2015,9 +2038,12 @@ export default {
                 item.multipleOutTop = false;
               }
               //计算多选模式节省金额
-              var save = (item.HistoryPrice-product.price)*product.buyCount;
-              this.list.data.SelectSavePriceAll -=save;
-              this.list.data.SelectPriceAll -= product.buyCount*product.price;
+              if(!item.wrongPrice){
+                var save = (item.HistoryPrice-product.price)*product.buyCount;
+                this.list.data.SelectSavePriceAll -=save;
+                this.list.data.SelectPriceAll -= product.buyCount*product.price;
+              }
+              
 
               if(product.overdue) hasOverdue++;
               
@@ -2067,12 +2093,13 @@ export default {
               }
               if (product.overdue) this.list.data.CountSpxq++; //近效期
               //计算节省金额
-              if(item.HistoryPrice>0){
+              if(item.HistoryPrice>0 && !item.wrongPrice){
+                //console.log(item.DrugsBase_DrugName);
                 var save = (item.HistoryPrice-product.price)*buyCount;
                 this.list.data.SelectSavePriceAll +=save;
                 this.list.data.SelectPriceAll += buyCount * product.price;
               }
-            }else if(product.canSelect && item.openMultiple && product.buyCount>0){
+            }else if(product.canSelect && item.openMultiple && product.buyCount>0 && !item.wrongPrice){
               this.list.data.purchasingCompanyList[index].Total += product.buyCount * product.price;
               if(product.buyCount > product.stock && !item.multipleOutTop){
                 this.list.data.CountPurchaseSock++;
@@ -3306,7 +3333,7 @@ export default {
         if(ele.showMonthlySales>0) this.showMonthlySales=1;
         if(ele.HistoryPrice>0) this.showPrice=1;
         
-        if( ele.HistoryPrice>0 && (ele.HistoryPrice*2<=ele.minPrice || ele.HistoryPrice >= 2*ele.minPrice) ){
+        if( ele.HistoryPrice>0 && (ele.HistoryPrice*2<=ele.Price || ele.HistoryPrice >= 2*ele.Price) ){
           ele.wrongPrice = true;
         } else{
           ele.wrongPrice = false;
