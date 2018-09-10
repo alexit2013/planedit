@@ -141,12 +141,12 @@
                   <input type="checkbox" @click="selectAll($event)" class="checkall" :class="{'oldChrome':(isChrome && isChrome<56) || isIE}" vale="all" v-model="checkall" >
                 </th>
                 <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE}">商品</th>
-                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales==1,'none':showStock+showMonthlySales==0,'oldChrome':(isChrome && isChrome<56) || isIE}">
+                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales+showPrice==1,'two':showStock+showMonthlySales+showPrice==2,'oldChrome':(isChrome && isChrome<56) || isIE}">
                   库存信息
                   <ul class="clear">
                     <li class="lf" v-if="showStock">库存</li>
                     <li class="lf" v-if="showMonthlySales">月销</li>
-                    <li class="lf">参考价</li>
+                    <li class="lf" v-if="showPrice">参考价</li>
                   </ul>
                 </th>
                 <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'oldChrome':(isChrome && isChrome<56) || isIE}">
@@ -328,7 +328,7 @@
               <div class="form-group row">
                   <label class="col-sm-4">效期、库存规则：</label>
                   <div class="col-sm-8">
-                      <label class="input"><input :checked="!list.data.IsMatchJxq" @click="changeIsMatchJxq($event)" type="checkbox" name="IsJxq"> 近效期不选（一年以内）</label> <span data-toggle="tooltip" title="" class="fa fa-question-circle" data-original-title="不选择近效期商品"></span>
+                      <label class="input"><input :checked="!list.data.IsMatchJxq" @click="changeIsMatchJxq($event)" type="checkbox" name="IsJxq"> 近效期不选</label> <span data-toggle="tooltip" title="" class="fa fa-question-circle" data-original-title="效期12个月：近效期5个月，效期12个月以上：近效期12个月"></span>
                       <br>
                       <label class="input"><input :checked="!list.data.IsMatchNotStock" @click="changeIsMatchNotStock($event)" type="checkbox" name="IsNoStock"> 库存不足不选</label> <span data-toggle="tooltip" title="" class="fa fa-question-circle" data-original-title="不选库存不满采购量的供应商"></span>
                   </div>
@@ -411,7 +411,7 @@
         <h4 class="title">多门店采购数量修改
           <span class="rf shut">&times;</span>
         </h4>
-        <div class="branchesContent">
+        <div class="branchesContent" style="overflow:scroll;">
           <p class="row">
             <span class="left col-xs-4">成华店</span>
             <span class="right col-xs-8">
@@ -2038,7 +2038,7 @@ export default {
                 item.multipleOutTop = false;
               }
               //计算多选模式节省金额
-              if(!item.wrongPrice){
+              if(!item.wrongPrice && item.HistoryPrice>0){
                 var save = (item.HistoryPrice-product.price)*product.buyCount;
                 this.list.data.SelectSavePriceAll -=save;
                 this.list.data.SelectPriceAll -= product.buyCount*product.price;
@@ -2083,6 +2083,7 @@ export default {
           item.sellerJson1.forEach((product, index) => {
             if (product.canSelect && product.prevSelected && !item.isSelect && !item.openMultiple) {
               var stock=product.stock;
+              //单选模式下小计累加上去
               this.list.data.purchasingCompanyList[index].Total += buyCount * product.price;
               //if (item.outTop1) this.list.data.CountPurchaseSock++; 
               if(buyCount>stock){//超库存
@@ -2099,17 +2100,18 @@ export default {
                 this.list.data.SelectSavePriceAll +=save;
                 this.list.data.SelectPriceAll += buyCount * product.price;
               }
-            }else if(product.canSelect && item.openMultiple && product.buyCount>0 && !item.wrongPrice){
+            }else if(product.canSelect && item.openMultiple && product.buyCount>0 && !item.isSelect){
               this.list.data.purchasingCompanyList[index].Total += product.buyCount * product.price;
               if(product.buyCount > product.stock && !item.multipleOutTop){
                 this.list.data.CountPurchaseSock++;
                 item.multipleOutTop= true ;
               }
               //计算多选模式节省金额
-               var save = (item.HistoryPrice-product.price)*product.buyCount;
-              this.list.data.SelectSavePriceAll +=save;
-              this.list.data.SelectPriceAll += product.buyCount*product.price;
-
+              if(!item.wrongPrice && item.HistoryPrice>0){
+                var save = (item.HistoryPrice-product.price)*product.buyCount;
+                this.list.data.SelectSavePriceAll +=save;
+                this.list.data.SelectPriceAll += product.buyCount*product.price;
+              }
               //计算多选近效期
               if(product.overdue) hasOverdue++;
 
@@ -3358,8 +3360,9 @@ export default {
               var productId = ele.sellerJson1[j].storeid;
               var product_spxq = new Date(Date.parse((ele.sellerJson1[j].spxq).replace(/-/g,'/'))); //计算近效期
               if (ele.sellerJson1[j].spxq) {
-                
-                ele.sellerJson1[j].overdue = product_spxq - time > 0 ? false : true;
+                //2018/9/6使用后端返回的isJxq来判断是否是近效期
+                //ele.sellerJson1[j].overdue = product_spxq - time > 0 ? false : true;
+                ele.sellerJson1[j].overdue =  ele.sellerJson1[j].isJxq > 0 ? true : false;
                 ele.sellerJson1[j].spxq = product_spxq.toLocaleDateString();
                 var dayIndex=ele.sellerJson1[j].spxq.indexOf('日');
                 if(dayIndex!=-1){
@@ -3666,6 +3669,14 @@ export default {
           background-color:#fff;
           left:298px;
           &.one{
+            width:50px;
+            >ul{
+              >li{
+                width:100%;
+              }
+            }
+          }
+          &.two{
             width:100px;
             >ul{
               >li{
