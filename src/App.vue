@@ -159,8 +159,9 @@
                     <h5>{{item.CompanyName}}</h5>
                     <span class="sign" v-if="item.isOnline">线上</span>
                     <span class="sign_offlilne" v-else>线下</span>
-                    <label>最低价/匹配/总商品</label>
-                    <p style="text-align:left">{{item.minPriceCount+'/'+item.MatchingCount+'/'+item.Count}}</p>
+                    <!-- <label>最低价/匹配/总商品</label>
+                    <p style="text-align:left">{{item.minPriceCount+'/'+item.MatchingCount+'/'+item.Count}}</p> -->
+                    <button class="btn btn-block btn-default" style="margin-bottom:6px;" :disabled="!item.Enabled" @click="prioritySort(item.storeid)">匹配商品优先排序</button>
                     <a href="javascript:;">
                       <button @click="cancelMatch(index)" v-if="item.Enabled" class="btn btn-block btn-danger">取消匹配</button>
                       <button @click="startMatch(index)" v-else class="btn btn-block btn-danger">启用匹配</button>
@@ -173,17 +174,20 @@
           </table>
           </div>
           <!-- 采购详情内容 -->
-          <table class="product_container table table-bordered table-hover">
+          <table class="product_container table table-bordered">
             <tbody v-if="productList.length>0">
-              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE}">
-                <td :class="{'multiple':product.openMultiple}">
+              <tr v-for="(product,ind) in productList" :key="ind" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE,'nowTrIndex':nowTrIndex == ind}">
+                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <input type="checkbox" @click="selectOne($event,ind)" v-model="product.isSelect" :disabled="!product.canBuy">
+                  <i @click="deleteTr(ind,product.id)" title="删除" class="fa fa-window-close fa-lg"></i>
                 </td>
                 <!-- 商品名称列 -->
-                <td :class="{'multiple':product.openMultiple}" class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
+                <td @click="startDown(ind)" :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}" class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
+                  <span v-show="nowTrIndex==ind" class="nowTrIndex"></span>
                   <b>{{product.DrugsBase_DrugName}}</b>
                   <span class="label label-info" v-if="product.BranchesCount>0">多门店</span>
                   <span  class='label label-warning' v-if="product.Goods_ID==0">未关联</span>
+                  <span class="label label-info" v-if="product.fixedSupplier" data-toggle="tooltip" data-placement="left" title="该商品指定有固定供应商">固定</span>
                   <span class="label label-success" v-if="product.source==1" data-toggle="tooltip" data-placement="left" title="搜索添加商品">
                     <i class="fa fa-search-plus"></i>
                   </span>
@@ -192,11 +196,11 @@
                   <p v-show="product.Recent_supplier">最近采购：{{product.Recent_supplier}}</p>
                 </td>
                 <!-- 库存 -->
-                <td :class="{'multiple':product.openMultiple}"  v-show="showStock">{{product.Stock}}</td>
+                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}"  v-show="showStock">{{product.Stock}}</td>
                 <!-- 月销 -->
-                <td :class="{'multiple':product.openMultiple}" v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
+                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}" v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
                 <!-- 参考价 -->
-                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{'high':product.Price-product.HistoryPrice<=0 || product.HistoryPrice ==0,'low':product.Price-product.HistoryPrice>0,'multiple':product.openMultiple}">
+                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{'high':product.Price-product.HistoryPrice<=0 || product.HistoryPrice ==0,'low':product.Price-product.HistoryPrice>0,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <span>{{product.HistoryPrice}}</span>
                   <p class="price_diff" v-if="product.HistoryPrice>0">
                     <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
@@ -205,7 +209,7 @@
                   <p v-else>0</p>
                 </td>
                 <!-- 采购数量 -->
-                <td @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple}">
+                <td @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
                   <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
                     <span v-html="multipleCount(ind)"></span>
@@ -227,6 +231,7 @@
                       <span class="label label-warning">议</span>
                       {{item.bargain}}
                     </p>
+                    <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
                     <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
                     <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
                       <p>库存 {{item.stock}}</p>
@@ -296,6 +301,14 @@
                     <label><input type="radio" class="default" checked name="filter_source" value="0">全部</label>
                     <label><input type="radio" name="filter_source" value="1"> 导入</label>
                     <label><input type="radio" name="filter_source" value="2"> 搜索添加</label>
+                  </div>
+              </div>
+              <div class="form-group row">
+                  <div class="col-sm-3 text-right">固定供应商</div>
+                  <div class="col-sm-9">
+                    <label><input type="radio" class="default" checked name="filter_fixedSupplier" value="0">全部</label>
+                    <label><input type="radio" name="filter_fixedSupplier" value="1"> 有固定供应商</label>
+                    <label><input type="radio" name="filter_fixedSupplier" value="2"> 无固定供应商</label>
                   </div>
               </div>
           </div>
@@ -578,6 +591,20 @@
         </p>
       </div>
     </div>
+    <!-- 15、删除确认框 -->
+    <div class="deleteConfirm" style="display:none;">
+      <div class="content">
+        <h4 class="title">信息
+          <span @click="closeDeleteConfirm" class="shut rf">&times;</span>
+        </h4>
+        <p class="info">当前商品会被删除,此操作不可撤销,是否确定?</P>
+        <p class="text-right">
+          <button @click="closeDeleteConfirm" class="btn btn-default">取消</button>
+          <button @click="deleteNow" class="btn btn-primary post">确定</button>
+        </p>
+      </div>
+    </div>
+
 
   </div>
 </template>
@@ -590,6 +617,7 @@ export default {
   components: {},
   data() {
     return {
+      url:'/WebApi/',
       id: 0,
       sorting: 0, //排序按钮点击对应的值
       factoryName: "",
@@ -608,6 +636,7 @@ export default {
       filter_select: 0, //筛选全部/已选择/未选择
       filter_pricetype: 0, //筛选价格 0全部 1 参考价高于供价 2 参考价低于供价
       filter_source: 0, //过滤品种来源 1 导入，2搜索添加
+      filter_fixedSupplier:0,  //固定供应商  0 全部  1固定   2不固定
       VenderName: "", //添加店铺模态框中的搜索店铺输入框绑定
       productList: [],
       CompanyList: [],
@@ -619,6 +648,12 @@ export default {
       isChrome:false,
       isIE:false,
       showCGPH:false,              //点开采购偏好模态框
+      startScroll:0,              //点击商品名称,开始使用方向键滚动页面的起始位置
+      nextScrollHeight:0,          //由于tr高度不等,方向键滚动时需要计算下一个tr高度
+      prevScrollHeight:0,          //上一个tr高度
+      halfScreenHeight:0,          //屏幕高度的一半
+      nowTrIndex:null,                 //当前方向箭头滚动到的下标
+      offsetLeft:0                  //固定顶部距离页面左侧的距离
     };
   },
   created() {
@@ -627,7 +662,7 @@ export default {
     this.isIE = this.IEBrowser();
     //console.log(this.list);
     //获取用户登录信息
-    this.$http.post('/WebApi/GetUserInfo').then(res=>{
+    this.$http.post(this.url+'GetUserInfo').then(res=>{
       if(res.data.success){
         this.userList=res.data.data;
         this.isLogin=true;
@@ -650,9 +685,13 @@ export default {
     
     this.id = location.search.slice(4);
     if(localStorage[this.id+'sorting']) this.sorting = Number(localStorage[this.id+'sorting']);
+    if(localStorage[this.id+'showCanBuy'])  this.showCanBuy=Boolean(Number(localStorage[this.id+'showCanBuy']));
+    if(localStorage[this.id+'nowTrIndex'])  this.nowTrIndex=Number(localStorage[this.id+'nowTrIndex']);
     this.getData();
   },
   mounted() {
+    //屏幕高度的一半
+    this.halfScreenHeight = $(window).height()/4;
     //已选中商品右上角图标切换
     $(".product_container").on("mouseenter", ".icon", function() {
       $(this)
@@ -725,7 +764,7 @@ export default {
           params.append("purchaselistid", purchaselistid);
           params.append("storeid", storeid);
           params.append("bargain", bargain);
-          this.$http.post("/WebApi/PurchasePlanBargain", params).then(res => {
+          this.$http.post(this.url+"PurchasePlanBargain", params).then(res => {
             if(!res.data.success){
               if(res.data.info=="请先登录"){
                 $('.loginConfirm').fadeIn();
@@ -870,7 +909,7 @@ export default {
       });
       //console.log(obj);
       this.$http
-        .post("/WebApi/PurchasePlanModifyBranchesBuyCount", params)
+        .post(this.url+"PurchasePlanModifyBranchesBuyCount", params)
         .then(res => {
           if (!res.data.success) {
             if(res.data.info=="请先登录"){
@@ -886,7 +925,7 @@ export default {
         });
       //向服务器发送修改后的总数
       this.$http
-        .post("/WebApi/PurchasePlanModifyBuyCount", {
+        .post(this.url+"PurchasePlanModifyBuyCount", {
           id: this.productList[productIndex].id,
           BuyCount: total
         })
@@ -952,12 +991,12 @@ export default {
       params.append('LimitPercentage',this.list.data.LimitPercentage);
       this.showLoading = true;
       this.$http
-        .post("/WebApi/PurchasePerferenceSett", params)
+        .post(this.url+"PurchasePerferenceSett", params)
         .then(res => {
           if (res.data.success) {
             //this.list=res.data;
             this.$http
-              .post("/WebApi/PurchaseEditRefresh", {
+              .post(this.url+"PurchaseEditRefresh", {
                 id: this.id
               })
               .then(res => {
@@ -1000,23 +1039,32 @@ export default {
       );
       this.filter_select = filter_select;
       if (filter_select > 0) count++;
+
       var filter_pricetype = Number(
         $("#cg_filter input[name='filter_pricetype']:checked").val()
       );
       this.filter_pricetype = filter_pricetype;
       if (filter_pricetype > 0) count++;
+
       var filter_source = Number(
         $("#cg_filter input[name='filter_source']:checked").val()
       );
       this.filter_source = filter_source;
       if (filter_source > 0) count++;
+
+      var filter_fixedSupplier = Number(
+        $("#cg_filter input[name='filter_fixedSupplier']:checked").val()
+      )
+      this.filter_fixedSupplier = filter_fixedSupplier;
+      if(filter_fixedSupplier > 0) count++;
+
       var $label = $(".box_header .filter_num");
       if (count > 0) {
         $label.text(count);
         //请求数据
         this.showLoading = true;
         this.$http
-          .post("/WebApi/getlist", {
+          .post(this.url+"getlist", {
             id: this.id,
             type: Number(this.showCanBuy),
             OverStock: Number(this.OverStock),
@@ -1024,7 +1072,8 @@ export default {
             PriceChange: Number(this.PriceChange),
             filter_select,
             filter_pricetype,
-            filter_source
+            filter_source,
+            filter_fixedSupplier
           })
           .then(res => {
             if (res.data.success) {
@@ -1059,7 +1108,7 @@ export default {
       //请求数据
       this.showLoading = true;
       this.$http
-        .post("/WebApi/getlist", {
+        .post(this.url+"getlist", {
           id: this.id,
           type: Number(this.showCanBuy),
           OverStock: Number(this.OverStock),
@@ -1092,16 +1141,18 @@ export default {
     var $fixed_top = $(".fixed_top");
     var $box = $('.content>.box');
     var offsetTop = $fixed_top.offset().top;
-    var left=$fixed_top.offset().left-8;//顶部固定条距离窗口左侧的距离
+    var left=$fixed_top.offset().left;//顶部固定条距离窗口左侧的距离
     var scrollLeft=0;
     $(window).scroll((e)=> {
-      clearInterval(moveTimer);
-      moveTimer = null;
-
+      if(moveTimer!=null){
+        clearInterval(moveTimer);
+        moveTimer = null;
+      }
       var $this=$(e.target);
 
       scrollLeft=$this.scrollLeft();
-      //console.log(scrollLeft);
+      // console.log('向右滚动距离'+scrollLeft);
+      // console.log('距离左侧距离'+$fixed_top.offset().left);
       if(scrollLeft>10){
         this.showShadow=true;
       }else{
@@ -1111,7 +1162,7 @@ export default {
         $fixed_top.css({
           position: "fixed",
           top: 0,
-          left:left-scrollLeft
+          left:this.offsetLeft-scrollLeft
         });
         $box.addClass('helpFixed');
           
@@ -1124,11 +1175,11 @@ export default {
     });
     
     window.onbeforeunload=()=>{
-      if(this.showCanBuy && !this.OverStock && !this.PurchaseSpxq && !this.PriceChange){
-    
+      if( !this.OverStock && !this.PurchaseSpxq && !this.PriceChange){  
         localStorage[ this.id] = $(window).scrollTop();
-
         localStorage[this.id+'sorting'] = this.sorting;
+        localStorage[this.id+'showCanBuy'] = Number(this.showCanBuy);
+        localStorage[this.id+'nowTrIndex'] = this.nowTrIndex;
       }else{
         localStorage[ this.id] = 0;
       }
@@ -1146,9 +1197,9 @@ export default {
           moveTimer = null;
           that.myToast('已为您滚动至上次浏览位置!')
         }else{
-          $('html:not(:animated)').animate({
+          $('html:not(:animated),body').animate({
             scrollTop:top
-          },500)
+          },300)
         }
       },500)
     }
@@ -1158,9 +1209,44 @@ export default {
     $('#cg_preference').on('hidden.bs.modal',()=>{
       this.showCGPH = false;
     })
+    
+
+    //类似EXCEL滚动
+    var lastPress = new Date();
+    var nowPress = null;
+    $(window).keydown((e)=>{
+      if(e.keyCode == 40 && this.nowTrIndex!=null){
+        var Scroll = $(window).scrollTop();
+        nowPress=new Date();
+        if(nowPress-lastPress>300){
+          //console.log(this.nextScrollHeight);
+          $('html:not(:animated),body').animate({
+            scrollTop:Scroll+this.nextScrollHeight
+          },'slow','linear')
+          this.nowTrIndex++;
+          this.prevScrollHeight = this.nextScrollHeight;
+          this.nextScrollHeight = $(`.product_container tr:eq(${this.nowTrIndex+1})`).outerHeight() || 0;
+          
+          lastPress = nowPress;
+        }
+      }else if(e.keyCode == 38 && this.nowTrIndex!=null){
+        var Scroll = $(window).scrollTop();
+        nowPress=new Date();
+        if(nowPress-lastPress>300){
+          $('html:not(:animated),body').animate({
+            scrollTop:Scroll-this.prevScrollHeight
+          },'normal','linear')
+          this.nextScrollHeight = $(`.product_container tr:eq(${this.nowTrIndex})`).outerHeight() || 0;
+          this.nowTrIndex--;
+          this.prevScrollHeight = $(`.product_container tr:eq(${this.nowTrIndex-1})`).outerHeight() || 0;
+        }
+      }
+    })
 
   },
   updated() { 
+  
+    this.offsetLeft = $(".fixed_top").offset().left;
     //启用tooltip
     $("[data-toggle='tooltip']").tooltip();
     //启用popover
@@ -1178,15 +1264,6 @@ export default {
       $('td:eq(1)').removeClass('fixWidth');
       $('th:eq(1)').removeClass('fixWidth');
     }
-
-    //根据showStock 和 showMonthlySales来更改宽度
-    // if(Number(this.showStock)+Number(this.showBranchesModal)==0){
-    //   $('th:eq(2)').removeClass().addClass('none');
-    // }else if(Number(this.showStock)+Number(this.showBranchesModal)==1){
-    //   $('th:eq(2)').removeClass().addClass('one');
-    // }else{
-    //   $('th:eq(2)').removeClass();
-    // }
 
     //采购偏好设置中例外条件
     //console.log( $("input[name='exception']") );
@@ -1229,7 +1306,7 @@ export default {
     getData() {
       this.showLoading = true;
       this.$http
-        .post("/WebApi/getlist", {
+        .post(this.url+"getlist", {
           id: this.id,
           type: Number(this.showCanBuy),
           OverStock: Number(this.OverStock),
@@ -1238,7 +1315,8 @@ export default {
           sorting: this.sorting,
           filter_select: this.filter_select,
           filter_pricetype: this.filter_pricetype,
-          filter_source: this.filter_source
+          filter_source: this.filter_source,
+          filter_fixedSupplier: this.filter_fixedSupplier
         })
         .then(res => {
           if (res.data.success) {
@@ -1254,11 +1332,11 @@ export default {
                 params.append("PriceChange", 1);
                 this.myConfirm("卖家价格发生变化,正在更新采购计划中的价格");
                 
-                this.$http.post("/WebApi/ChangePricePurchasePlan", params).then(res => {
+                this.$http.post(this.url+"ChangePricePurchasePlan", params).then(res => {
                   if (res.data.success) {
                     //重新计算成功,在次重新请求数据
                     this.$http
-                      .post("/WebApi/getlist", {
+                      .post(this.url+"getlist", {
                         id: this.id,
                         type: Number(this.showCanBuy),
                         OverStock: Number(this.OverStock),
@@ -1293,11 +1371,11 @@ export default {
               } else {
                 this.myConfirm("采购的卖家数量发生变动,正在重新生成采购计划");
                 
-                this.$http.post("/WebApi/ChangePurchasePlan", params).then(res => {
+                this.$http.post(this.url+"ChangePurchasePlan", params).then(res => {
                   if (res.data.success) {
                     //重新计算成功,在次重新请求数据
                     this.$http
-                      .post("/WebApi/getlist", {
+                      .post(this.url+"getlist", {
                         id: this.id,
                         type: Number(this.showCanBuy),
                         OverStock: Number(this.OverStock),
@@ -1411,7 +1489,7 @@ export default {
 
       this.showLoading = true;
       this.$http
-        .post("/WebApi/PurchasePlanSelectMiniPirce", {
+        .post(this.url+"PurchasePlanSelectMiniPirce", {
           id: this.id,
           type: 1
         })
@@ -1507,7 +1585,7 @@ export default {
         }
         //console.log(str);
         this.$http
-          .post("/WebApi/PurchasePlanSetisSelect", {
+          .post(this.url+"PurchasePlanSetisSelect", {
             data: str
           })
           .then(res => {
@@ -1557,7 +1635,7 @@ export default {
            var params = new URLSearchParams();
             params.append("id", this.productList[ind].id);
             params.append("BuyCount", this.productList[ind].BuyCount);
-          this.$http.post('/WebApi/PurchasePlanModifyBuyCount',params).then(res=>{
+          this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
             console.log(res.data)
           }).catch(err=>{
             this.myConfirm("网络错误,请重试!");
@@ -1572,7 +1650,7 @@ export default {
             str += obj[ak] + ",";
           }
           //console.log(str);
-          this.$http.post("/WebApi/PurchasePlanSetisSelect", {
+          this.$http.post(this.url+"PurchasePlanSetisSelect", {
               data: str
             })
             .then(res => {
@@ -1745,7 +1823,7 @@ export default {
         // this.productList[ind].sellerJson1[key].bargain=bargain;   //转移议价
         //向服务器发送数据选中的商品
         this.$http
-          .post("/WebApi/PurchasePlanChangeStoreid", {
+          .post(this.url+"PurchasePlanChangeStoreid", {
             id: this.productList[ind].id,
             storeid: this.list.data.purchasingCompanyList[key].storeid,
             bargain: bargain
@@ -1774,7 +1852,7 @@ export default {
         var params = new URLSearchParams();
         params.append("data", str);
         this.$http
-          .post("/WebApi/PurchasePlanSetisSelect", params)
+          .post(this.url+"PurchasePlanSetisSelect", params)
           .then(res => {
             if (!res.data.success) {
               this.myConfirm(res.data.info);
@@ -1932,7 +2010,7 @@ export default {
 
       //向服务器发送数据
       this.$http
-        .post("/WebApi/PurchasePlanModifyBuyCount", {
+        .post(this.url+"PurchasePlanModifyBuyCount", {
           id: this.productList[ind].id,
           BuyCount: val
         })
@@ -2146,7 +2224,7 @@ export default {
         str += obj[key] + ",";
       }
       if(str == "") return;
-      this.$http.post("/WebApi/PurchasePlanSetisSelect", {
+      this.$http.post(this.url+"PurchasePlanSetisSelect", {
           data: str
         }).then(res => {
           if(!res.data.success){
@@ -2234,7 +2312,7 @@ export default {
             //console.log(productIndex);
             this.productList[ind].sellerJson1[productIndex].selected = true;
             this.productList[ind].sellerJson1[productIndex].prevSelected = true;
-            this.$http.post("/WebApi/PurchasePlanChangeStoreid", {
+            this.$http.post(this.url+"PurchasePlanChangeStoreid", {
               id: this.productList[ind].id,
               storeid: this.list.data.purchasingCompanyList[productIndex].storeid,
               bargain: this.productList[ind].sellerJson1[productIndex].bargain
@@ -2384,7 +2462,7 @@ export default {
       }
       //console.log(str);
       this.$http
-        .post("/WebApi/PurchasePlanSetisSelect", {
+        .post(this.url+"PurchasePlanSetisSelect", {
           data: str
         })
         .then(res => {
@@ -2426,7 +2504,7 @@ export default {
         data.append("file", e.target.files[0]);
         this.showLoading = true;
         this.$http
-          .post("/WebApi/PurchasePlanImportExcelMore", data)
+          .post(this.url+"PurchasePlanImportExcelMore", data)
           .then(res => {
             if (res.data.success == true) {
               //导入成功
@@ -2434,7 +2512,7 @@ export default {
               this.myToast("导入成功,正在刷新采购计划!");
 
               //导入成功,重新请求数据
-              this.$http.post("/WebApi/PurchaseEditRefresh", {
+              this.$http.post(this.url+"PurchaseEditRefresh", {
                 id: this.id
               }).then(res => {
                 if (res.data.success) {
@@ -2566,24 +2644,24 @@ export default {
     cancelMatch(index) {
       this.list.data.purchasingCompanyList[index].Enabled = false;
       //商品列表中index一列商品取消勾选
-      this.productList.forEach((ele, i) => {
-        if (ele.sellerJson1[index]) {
-          if (ele.sellerJson1[index].selected) {
-            ele.isSelect = false;
-            this.list.data.ProductCountSelect--;
-            // this.list.data.purchasingCompanyList[index].Total=0;
-          }
-          ele.sellerJson1[index].selected = false;
-          ele.sellerJson1[index].prevSelected = false;
-          ele.sellerJson1[index].canSelect = false;
-          //改变此商品列的canBuy值,如果所有商品都无法选择,则改为false
-          var canSelectNum=0;
-          ele.sellerJson1.forEach((seller,i)=>{
-            if(seller && seller.canSelect) canSelectNum++;
-          })
-          if(canSelectNum==0) ele.canBuy=false;
-        }
-      });
+      // this.productList.forEach((ele, i) => {
+      //   if (ele.sellerJson1[index]) {
+      //     if (ele.sellerJson1[index].selected) {
+      //       ele.isSelect = false;
+      //       this.list.data.ProductCountSelect--;
+      //       // this.list.data.purchasingCompanyList[index].Total=0;
+      //     }
+      //     ele.sellerJson1[index].selected = false;
+      //     ele.sellerJson1[index].prevSelected = false;
+      //     ele.sellerJson1[index].canSelect = false;
+      //     //改变此商品列的canBuy值,如果所有商品都无法选择,则改为false
+      //     var canSelectNum=0;
+      //     ele.sellerJson1.forEach((seller,i)=>{
+      //       if(seller && seller.canSelect) canSelectNum++;
+      //     })
+      //     if(canSelectNum==0) ele.canBuy=false;
+      //   }
+      // });
       this.list.data.purchasingCompanyList[index].Total = 0;
       //向服务器发送数据,取消匹配
       this.showLoading = true;
@@ -2595,11 +2673,11 @@ export default {
       );
       params.append("Enabled", false);
       this.$http
-        .post("/WebApi/PurchasePlanSetMatching", params)
+        .post(this.url+"PurchasePlanSetMatching", params)
         .then(res => {
           if (res.data.success) {
-            this.showLoading = false;
-            //this.getData();
+            // this.showLoading = false;
+            this.getData();
           } else {
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
@@ -2632,7 +2710,7 @@ export default {
       );
       params.append("Enabled", true);
       this.$http
-        .post("/WebApi/PurchasePlanSetMatching", params)
+        .post(this.url+"PurchasePlanSetMatching", params)
         .then(res => {
           if (!res.data.success) {
             if(res.data.info=="请先登录"){
@@ -2658,7 +2736,7 @@ export default {
       //     Manufacturer=$('#factory').val().trim();
       //console.log(DrugName);
       this.$http
-        .post("/WebApi/getlist", {
+        .post(this.url+"getlist", {
           id: this.id,
           type: Number(this.showCanBuy),
           DrugName: this.productName,
@@ -2712,7 +2790,7 @@ export default {
       $(".refreshConfirm").fadeOut();
       this.showLoading = true;
       this.$http
-        .post("/WebApi/PurchaseEditRefresh", {
+        .post(this.url+"PurchaseEditRefresh", {
           id: this.id
         })
         .then(res => {
@@ -2747,7 +2825,7 @@ export default {
       this.factoryName = "";
       this.showLoading = true;
       this.$http
-        .post("/WebApi/getlist", {
+        .post(this.url+"getlist", {
           id: this.id,
           type: 1
         })
@@ -2792,7 +2870,7 @@ export default {
     addStore() {
       var params = new URLSearchParams();
       this.$http
-        .post("/WebApi/VendorAddSelectAllList",params)
+        .post(this.url+"VendorAddSelectAllList",params)
         .then(res => {
           if (res.data.success) {
             //console.log(res.data.data);
@@ -2821,7 +2899,7 @@ export default {
       params.append('VenderName',this.VenderName);
       params.append('page',val);
       this.$http
-        .post("/WebApi/VendorAddSelectAllList",params)
+        .post(this.url+"VendorAddSelectAllList",params)
         .then(res => {
           if (res.data.success) {
             //console.log(res.data.data);
@@ -2849,7 +2927,7 @@ export default {
       var params = new URLSearchParams();
       params.append('VenderName',this.VenderName);
       this.$http
-        .post("/WebApi/VendorAddSelectAllList",params)
+        .post(this.url+"VendorAddSelectAllList",params)
         .then(res => {
           if (res.data.success) {
             //console.log(res.data.data);
@@ -2880,7 +2958,7 @@ export default {
       params.append("storeid", this.CompanyList.VendorList[key].venderid);
       this.CompanyList.VendorList[key].IsVendor = true;
       this.$http
-        .post("/WebApi/VendorAdd", params)
+        .post(this.url+"VendorAdd", params)
         .then(res => {
           if (!res.data.success) {
             //添加失败
@@ -2899,7 +2977,7 @@ export default {
             var params = new URLSearchParams();
             params.append("id", this.id);
             this.$http
-              .post("/WebApi/ChangePurchasePlan", params)
+              .post(this.url+"ChangePurchasePlan", params)
               .then(res => {
                 this.showLoading=false;
                 if (res.data.success) {
@@ -2933,7 +3011,7 @@ export default {
       this.CompanyList.VendorList[key].IsVendor = false;
       //console.log(this.CompanyList[key].venderid);
       this.$http
-        .post("/WebApi/VendorDel", params)
+        .post(this.url+"VendorDel", params)
         .then(res => {
           if (!res.data.success) {
             this.showLoading=false;
@@ -2949,7 +3027,7 @@ export default {
             var params = new URLSearchParams();
             params.append("id", this.id);
             this.$http
-              .post("/WebApi/ChangePurchasePlan", params)
+              .post(this.url+"ChangePurchasePlan", params)
               .then(res => {
                 this.showLoading=false;
                 if (res.data.success) {
@@ -3173,7 +3251,7 @@ export default {
         var params = new URLSearchParams();
         params.append("id", this.productList[ind].id);
         params.append("BuyCount", this.productList[ind].BuyCount);
-        this.$http.post('/WebApi/PurchasePlanModifyBuyCount',params).then(res=>{
+        this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
           console.log(res)
         }).catch(err=>{
           this.myConfirm("网络错误,请重试!");
@@ -3261,7 +3339,7 @@ export default {
       params.append("storeid", storeid);
       params.append("BuyCount", BuyCount);
       params.append("bargain", bargain);
-      this.$http.post('/WebApi/PurchasePlanModifyBuyCountForMulti',params).then(res=>{
+      this.$http.post(this.url+'PurchasePlanModifyBuyCountForMulti',params).then(res=>{
         //console.log(res.data);
       }).catch(err=>{
         this.myConfirm("网络错误,请重试!");
@@ -3286,20 +3364,22 @@ export default {
       })
       if(product.openMultiple && item.buyCount>0 && isMain){
         if( item.storeid != this.list.data.PreferredSupplier ){
-          nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span><br/>${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
+          nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span><br/>${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
         }else{
-          nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+          nextP.html(`库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
         }
         
       }else if(product.openMultiple && item.buyCount>0 && !isMain){
-        nextP.html(`库存:${item.stock}<br/>效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+        nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
       }else if(!product.openMultiple && isMain && item.storeid != this.list.data.PreferredSupplier ){
         if(str.length>0 && percent>0){
-          nextP.html(`较主供应商价格 ${str}`).show();
+          nextP.html(`${item.fixedSupplierTooltip}<br/>较主供应商价格 ${str}`).show();
         }
         
       }else if(!product.openMultiple && !isMain){
-
+        if(item.fixedSupplierTooltip)  nextP.html(`${item.fixedSupplierTooltip}`).show();
+      }else if(item.fixedSupplierTooltip && isMain){
+        nextP.html(`${item.fixedSupplierTooltip}`).show();
       }
 
     },
@@ -3320,7 +3400,87 @@ export default {
       }else{
         $("#cg_preference input[name='exception']").prop('disabled',false);
       }
-    }
+    },
+    //
+    startDown(ind){
+      this.nowTrIndex =ind;
+      //元素距离页面顶部的距离
+      this.startScroll=$(`.product_container tr:eq(${ind})`).offset().top;
+
+      //滚动过的距离
+     // var hasScroll  = $(window).scrollTop();
+
+      this.nextScrollHeight = $(`.product_container tr:eq(${ind+1})`).outerHeight() || 0;
+      this.prevScrollHeight = $(`.product_container tr:eq(${ind-1})`).outerHeight() || 0;
+
+      $('html').animate({
+        scrollTop:this.startScroll-this.halfScreenHeight
+      },500)
+    },
+    //删除当前列商品
+    deleteTr(ind,id){
+      $('.deleteConfirm .post').data({
+        id,
+        ind
+      });
+      $('.deleteConfirm').fadeIn();
+  
+    },
+    //取消删除
+    closeDeleteConfirm(){
+      $('.deleteConfirm').fadeOut();
+    },
+    //确认删除
+    deleteNow(){
+      var $postBtn = $('.deleteConfirm .post');
+      var id =  $postBtn.data('id');
+      var ind = Number($postBtn.data('ind'));
+
+      // this.productList.splice(ind,1);
+      // this.closeDeleteConfirm();
+      // this.myToast('删除成功');
+
+      this.showLoading = true;
+      this.$http.post(this.url+'DeletePurchaseList',{
+        id
+      }).then(res=>{
+        if(res.data.success){
+          //this.myToast('删除成功');
+          this.closeDeleteConfirm();
+          this.getData();
+          //this.productList.splice(ind,1);
+          
+        }else{
+          this.showLoading = false;
+          this.closeDeleteConfirm();
+          this.myToast(res.data.info);
+        }
+      }).catch(err=>{
+        this.showLoading = false;
+        this.closeDeleteConfirm();
+        this.myToast('网络错误,请重试!');
+      })
+
+    },
+    //匹配供应商优先排序
+    prioritySort(storeid){
+      this.showLoading = true;
+      this.$http.post(this.url+'PurchasePlanSetPreference',{
+        Purchase_Id:this.id,
+        StoreId:storeid
+      }).then(res=>{
+        if(res.data.success){
+          this.getData();
+        }else{
+          this.showLoading = false;
+          this.myToast(res.data.info);
+        }
+      }).catch(err=>{
+        this.showLoading=false;
+        this.myToast('网络错误,请重试!');
+      })
+    },
+
 
   },
   watch: {
@@ -3449,21 +3609,7 @@ export default {
     },
     //计算节省金额
     saveMoney(){
-      // var saveMoney=0;
-      // var total=0;
-      // this.productList.forEach((ele,i)=>{
-      //   if(ele.HistoryPrice>0 && ele.isSelect){
-      //     ele.sellerJson1.forEach((item,index)=>{
-      //       if(item && item.selected){
-      //         saveMoney+=(ele.HistoryPrice-item.price)*ele.BuyCount;
-      //         total+=ele.HistoryPrice*ele.BuyCount;
-      //       }
-      //     })
-      //   }
-      // });
-      //console.log(saveMoney);
-      // var percent=(saveMoney/total)*100||0;
-      // return saveMoney.toFixed(2)+'  ， '+percent.toFixed(2)+'%';
+
       var SelectSavePriceAll = this.list.data.SelectSavePriceAll ;
       var percent=(SelectSavePriceAll.toFixed(2)/this.list.data.SelectPriceAll.toFixed(2))*100||0;
       return SelectSavePriceAll.toFixed(2)+'  ， '+percent.toFixed(2)+'%';  
@@ -3490,13 +3636,15 @@ export default {
 
 <style lang="less">
 @media (min-width: 992px) {
-  .modal-big {
-    width: 992-30px;
+  .modal-big,
+  .container{
+    width: 100%;
   }
 }
 @media (min-width: 1200px) {
-  .modal-big {
-    width: 1200-30px;
+  .modal-big,
+  .container{
+    width: 100%;
   }
 }
 @media (min-width: 1400px) {
@@ -3511,6 +3659,14 @@ export default {
     width: 1600-30px;
   }
 }
+
+.mytran-transition{
+  transition: all 0.5s linear;
+}
+.mytran-enter,.mytran-leave{
+  width:0;
+}
+
 
 .header_bg {
   background-color: rgb(60, 141, 188);
@@ -3807,6 +3963,9 @@ export default {
               }
               
           }
+          &.nowTrIndex{
+            background-color: #f5f5f5;
+          }
           &.multiple{
             background-color:#FCF8E3;
           }
@@ -3821,23 +3980,47 @@ export default {
             &.multiple{
               background-color:#FCF8E3 !important;
             }
-            
+            &.nowTrIndex{
+              background-color: #f5f5f5;
+            }
             &:first-child {
               width: 40px;
               position: sticky;
               left: 0;
               background-color: #fff;
               z-index: 99;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
+              >.fa-window-close{
+                color: rgb(214, 48, 48);
+                position: absolute;
+                right: 0;
+                top: 2px;
+                cursor: pointer;
+              }
             }
             &:nth-child(2) {
               &.fixWidth{
                 width:260px;
               }
+
               overflow: hidden;
                position: sticky;
               left: 39px;
               background-color: #fff;
               z-index: 99;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
+              >.nowTrIndex{
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 6px;
+                background-color: rgba(236, 28, 38, 0.5);
+              }
               > b {
                 white-space: nowrap;
               }
@@ -3864,12 +4047,18 @@ export default {
               left:300px;
               z-index: 99;
               background-color:#fff;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
             }
             &:nth-child(4) {
               width: 50px;
               position:sticky;
               z-index: 99;
               background-color:#fff;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
             }
             &:nth-child(5) {
               width: 50px;
@@ -3878,6 +4067,9 @@ export default {
               background-color:#fff;
               padding-left:4px;
               padding-right:4px;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
               &.low {
                 color: #00a65a;
               }
@@ -3893,6 +4085,9 @@ export default {
               position: sticky;
               z-index: 99;
               background-color:#fff;
+              &.nowTrIndex{
+                background-color: #f5f5f5;
+              }
               &.fixed{
                 box-shadow: 6px 0px 10px rgba(0,0,0,.35);
               }
@@ -3976,6 +4171,14 @@ export default {
                 .min{
                   color:#5cb85c;
                 }
+                .fixCircle{
+                  display: inline-block;
+                  width:6px;
+                  height:6px;
+                  border-radius: 50%;
+                  margin-right:8px;
+                  margin-bottom:2px;
+                }
                 .info {
                   > p {
                     color: #999;
@@ -3993,7 +4196,7 @@ export default {
                 }
               }
               >p{
-                width: 188px;
+                width: 210px;
                 position: absolute;
                 bottom: -90px;
                 z-index: 200;
@@ -4208,6 +4411,7 @@ export default {
   }
 }
 .orderConfirm,
+.deleteConfirm,
 .changeConfirm,
 .loginConfirm,
 .uploadDoneConfirm,
