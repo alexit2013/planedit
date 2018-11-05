@@ -179,6 +179,7 @@
               <tr v-for="(product,ind) in productList" :key="ind" @click="trChangeIndex(ind)" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE,'nowTrIndex':nowTrIndex == ind}">
                 <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <input type="checkbox" @click="selectOne($event,ind)" v-model="product.isSelect" :disabled="!product.canBuy">
+                  <p v-text="ind+1"></p>
                   <i @click="deleteTr(ind,product.id)" title="删除" class="fa fa-window-close fa-lg"></i>
                 </td>
                 <!-- 商品名称列 -->
@@ -193,7 +194,9 @@
                   </span>
                   <i class="marks" v-if="product.marks!=''"></i>
                   <p><span>{{product.DrugsBase_Specification}}</span> - {{product.DrugsBase_Manufacturer}}</p>
-                  <p v-show="product.Recent_supplier">最近采购：{{product.Recent_supplier}}</p>
+                  <p v-show="product.Recent_supplier"> 最近采购：{{product.Recent_supplier}} </p>
+                  <span class="lastTransaction" v-if="product.LastTransaction" v-text="(new Date(product.LastTransaction)).toLocaleDateString()" data-toggle="tooltip" data-original-title="最近优E+采购时间"></span>
+                  
                 </td>
                 <!-- 库存 -->
                 <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}"  v-show="showStock">{{product.Stock}}</td>
@@ -209,21 +212,30 @@
                   <p v-else>0</p>
                 </td>
                 <!-- 采购数量 -->
-                <td @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
-                  <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
-                  <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
-                    <span v-html="multipleCount(ind)"></span>
-                      /
-                    <span>{{product.BuyCount}}</span>
-                  </p>
-                  <button @click="startMultiple(ind)" v-show="product.canMultiple && !product.openMultiple && product.mouseOn && product.outTop1 &&product.isSelect" class="open btn btn-primary btn-xs">供应商多选</button>
+                <td  :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
+                  <div class="inputContainer" @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" style="height:46px;">
+                    <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
+                    <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
+                      <span v-html="multipleCount(ind)"></span>
+                        /
+                      <span>{{product.BuyCount}}</span>
+                    </p>
+                    <button @click="startMultiple(ind)" v-show="product.canMultiple && !product.openMultiple && product.mouseOn && product.outTop1 &&product.isSelect" class="open btn btn-primary btn-xs">供应商多选</button>
+                    <button @click="showBranchesModal2(ind)" v-show="product.mouseOn && !product.outTop1 && list.data.BranchesList.length>0" class="open btn btn-primary btn-xs">指定门店</button>
+                  </div>
                   <button @mouseenter="showClose($event)" @mouseleave="showOpen($event)" @click="closeMultiple(ind,$event)" v-show="product.canMultiple && product.openMultiple" class="opened btn btn-primary btn-xs">多选</button>
-                  <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;bottom:34px;" class="fa fa-exclamation-circle"></i>
+                  <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;top:28px;" class="fa fa-exclamation-circle"></i>
+                  <p v-show="product.Goods_Pcs_Small>1 && product.BranchesCount==0 && (!product.openMultiple) &&(!product.mouseOn)" @click="midChange(ind,$event)" style="color:#999;position:absolute;left:26%;bottom:0;margin:0;font-size:12px;cursor:pointer;">
+                    中包装  
+                    <span>{{product.Goods_Pcs_Small}}</span>
+                    <i data-toggle="popover" data-placement="bottom" data-content="所选供应商只能按中包装整倍数采购，点击中包装数量可自动修改" class="fa fa-question-circle"></i>
+                  </p>
                 </td>
                 <!-- 药企对应商品 -->
                 <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
                   <!-- 有商品 -->
                   <div v-if="item" @click="product_choose(ind,key,product.BuyCount,item.price)" @mouseenter="showPopOver(product,item,$event)" @mouseleave="closePopOver($event)" >
+                    <b v-if="item.Remarks"></b>
                     <i class="icon" v-show="(!product.openMultiple&&item.selected&&product.isSelect) || (item.buyCount>0 && product.openMultiple&&product.isSelect)" @click.stop="cancel_select(ind,key,product.BuyCount,item.price)">
                       <span class="fa fa-check"></span>
                     </i>
@@ -309,6 +321,14 @@
                     <label><input type="radio" class="default" checked name="filter_fixedSupplier" value="0">全部</label>
                     <label><input type="radio" name="filter_fixedSupplier" value="1"> 有固定供应商</label>
                     <label><input type="radio" name="filter_fixedSupplier" value="2"> 无固定供应商</label>
+                  </div>
+              </div>
+              <div class="form-group row">
+                  <div class="col-sm-3 text-right">最近采购<span data-toggle="tooltip" title="" data-original-title="筛选最近优E+采购过的商品" class="fa fa-question-circle"></span></div>
+                  <div class="col-sm-9">
+                    <label><input type="radio" class="default" checked name="filter_LastTransaction" value="0">全部</label>
+                    <label><input type="radio" name="filter_LastTransaction" value="-1"> 近一天</label>
+                    <label><input type="radio" name="filter_LastTransaction" value="-3"> 近三天</label>
                   </div>
               </div>
           </div>
@@ -424,7 +444,7 @@
         <h4 class="title">多门店采购数量修改
           <span class="rf shut">&times;</span>
         </h4>
-        <div class="branchesContent" style="overflow:scroll;">
+        <div class="branchesContent" style="overflow-y:auto;">
           <p class="row">
             <span class="left col-xs-4">成华店</span>
             <span class="right col-xs-8">
@@ -443,8 +463,8 @@
           </p>
         </div>
         <div class="branchesFooter">
-          <button class="shut btn btn-default">取消</button>
-          <button class="post btn btn-primary">保存</button>
+          <button class="btn btn-default shut">取消</button>
+          <button class="post btn btn-primary">确定</button>
         </div>
       </div>
     </div>
@@ -637,6 +657,7 @@ export default {
       filter_pricetype: 0, //筛选价格 0全部 1 参考价高于供价 2 参考价低于供价
       filter_source: 0, //过滤品种来源 1 导入，2搜索添加
       filter_fixedSupplier:0,  //固定供应商  0 全部  1固定   2不固定
+      filter_LastTransaction:0,  //搜索最近采购  0全部   -1最近一天   -3最近3天
       VenderName: "", //添加店铺模态框中的搜索店铺输入框绑定
       productList: [],
       CompanyList: [],
@@ -790,10 +811,109 @@ export default {
     //多门店购买数量修改
     var $branchesModal = $(".branchesModal");
     //点击关闭
-    $branchesModal.on("click", ".shut", function() {
-      var $this = $(this);
-      $this.parents(".branchesModal").slideUp();
+    $branchesModal.on("click", ".shut", (e)=> {
+      $branchesModal.slideUp();
     });
+    //增加采购门店
+    $branchesModal.on('click','.fa-plus',(e)=>{
+      //如果editBox中最后一条为select下拉选择框,去除
+      var $select = $branchesModal.find('.editBox select');
+      if($select.length>0){
+        var text = $select.find('option:selected').text();
+        $select.parent().html(text);
+      }
+
+      var index = $(e.target).parents('.branchesBody').find('.post').data('productIndex');
+      var html = "<p class='row'><span class='left col-xs-4'><select>";
+      //总可用门店
+      var newBranchesList= [];
+
+      for(var item of this.list.data.BranchesList){
+        newBranchesList.push(item);
+      }
+
+      var $NameBranches = $(e.target).parents('.branchesBody').find('.editBox .left');
+      //处理为当前下拉选择框可用option
+
+      $NameBranches.each((key,dom)=>{
+        var find = newBranchesList.indexOf($(dom).text());
+        if(find != -1){
+          newBranchesList.splice(find,1);
+        }
+      })
+
+      if(newBranchesList.length==0){
+        this.myToast("门店已全部添加");
+        return;
+      }
+
+      for(var i = 0; i < newBranchesList.length; i++){
+        html+=`<option>${newBranchesList[i]}</option>`;
+      }
+      html+=`</select></span><span class='right col-xs-4'><input style="width:100px;"   value="1" class="input form-control" type="number"> 
+              </span><i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i></p>`;
+
+      $branchesModal.find('.editBox').append(html);
+      var total = parseInt($branchesModal.find(".total").text());
+      $branchesModal.find(".total").text(++total);
+
+     /*  var params = new URLSearchParams();
+        params.append('Purchase_Id',this.id);
+        params.append('psn',$branchesModal.find('.post').data('psn'));
+        $branchesModal.find('.editBox>.row').each(function(key,dom){
+          var $row =$(dom);
+          var BranchesName = $row.find('.left').text() || $row.find('.left option:selected').text();
+          var BranchesBuyCount = $row.find('.right>input').val();
+          params.append(key,BranchesName);
+          params.append(key+'_1',BranchesBuyCount);
+        })
+        this.$http.post(this.url+'PurchasePlanModifyBranchesBuyCount',params)
+              .then(res=>{
+                if(res.data.success){
+                  this.productList[index].BranchesJson.length = 0;
+                  for(var item of JSON.parse(res.data.data)){
+                    this.productList[index].BranchesJson.push(item);
+                  }
+                }else{
+                  this.myConfirm(res.data.info)
+                }
+              }) */
+
+    })
+    //删除门店
+    $branchesModal.on('click','.fa-minus-circle',(e)=>{
+      // console.log($branchesModal.find('.post').data('psn'));
+      var $this = $(e.target);
+      //如果只剩一个不能删除
+      if($this.parents('.editBox').children('.row').length <=1 ){
+        this.myToast('只剩一个门店,无法删除');
+        return;
+      }
+      var reduce  = parseInt($this.prev().children('input').val());
+      $this.parent().remove();
+      var total = parseInt($branchesModal.find(".total").text());
+      $branchesModal.find(".total").text(total-reduce);
+      
+    /*    var params = new URLSearchParams();
+          params.append('Purchase_Id',this.id);
+          params.append('psn',$branchesModal.find('.post').data('psn'));
+          params.append('shortName',$this.parent().find('.left').text() || $this.parent().find('.left option:selected').text());
+          
+          this.$http.post(this.url+'PurchasePurchaseBranchesDelete',params).then(res=>{
+            if(res.data.success){
+              var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
+              this.productList[productIndex].BranchesJson.length = 0;
+              for(var item of JSON.parse(res.data.data)){
+                this.productList[productIndex].BranchesJson.push(item);
+              }
+      
+            }else{
+              this.myConfirm(res.data.info);
+            }
+          }) */
+
+
+    })
     //input值改变
     $branchesModal.on("change", ".input", e => {
       var $this = $(e.target),
@@ -860,9 +980,6 @@ export default {
             }
 
           }
-
-          
-
         });
       }
       this.productList[productIndex].BuyCount0 = total;
@@ -885,7 +1002,6 @@ export default {
         }
       } else if (total <= stock) {
         //小于库存
-        //console.log(total+'新数量没有超过库存');
         if (this.productList[productIndex].outTop1) {
           //之前超库存
           //console.log('并且之前超库存');
@@ -897,7 +1013,7 @@ export default {
       //向服务器发送多门店采购修改数量
       //生成{商品ID:购买数量}格式数据
       var params = new URLSearchParams();
-      $(".branchesModal .input").each((i, ele)=> {
+     /*  $(".branchesModal .input").each((i, ele)=> {
         var $input = $(ele);
         var id = $input.data("id"),
           value = parseInt($input.val());
@@ -905,18 +1021,38 @@ export default {
         params.append(id, value);
 
         var branchesIndex = $input.data('branchesindex');
-        this.productList[productIndex].BranchesJson[branchesIndex].BuyCount = value;
+        if(branchesIndex){
+          this.productList[productIndex].BranchesJson[branchesIndex].BuyCount = value;
+        }
+        
 
-      });
-      //console.log(obj);
+      }); */
+      params.append('Purchase_Id',this.id);
+      params.append('psn',$branchesModal.find('.post').data('psn'));
+      $branchesModal.find('.editBox>.row').each(function(key,dom){
+        var $row =$(dom);
+        var BranchesName = $row.find('.left').text() || $row.find('.left option:selected').text();
+        var BranchesBuyCount = $row.find('.right>input').val();
+        params.append(key,BranchesName);
+        params.append(key+'_1',BranchesBuyCount);
+      })
+      
+
       this.$http
         .post(this.url+"PurchasePlanModifyBranchesBuyCount", params)
         .then(res => {
+          // console.log(res.data);
           if (!res.data.success) {
             if(res.data.info=="请先登录"){
               $('.loginConfirm').fadeIn();
             }else{
               this.myConfirm(res.data.info);
+            }
+          }else{
+            var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
+            this.productList[productIndex].BranchesJson.length = 0;
+            for(var item of JSON.parse(res.data.data)){
+              this.productList[productIndex].BranchesJson.push(item);
             }
           }
         })
@@ -940,7 +1076,7 @@ export default {
           this.myToast("网络错误,请重试");
         });
 
-      $(".branchesModal .shut").click();
+      $branchesModal.slideUp();
     });
 
     //采购偏好设置提交按钮
@@ -1059,10 +1195,20 @@ export default {
       this.filter_fixedSupplier = filter_fixedSupplier;
       if(filter_fixedSupplier > 0) count++;
 
+      var  filter_LastTransaction =Number(
+        $("#cg_filter input[name='filter_LastTransaction']:checked").val()
+      )
+      this.filter_LastTransaction = filter_LastTransaction;
+      if(filter_LastTransaction != 0) count++;
+
       var $label = $(".box_header .filter_num");
       if (count > 0) {
         $label.text(count);
-        //请求数据
+        
+      } else {
+        $label.text("");
+      }
+      //请求数据
         this.showLoading = true;
         this.$http
           .post(this.url+"getlist", {
@@ -1074,9 +1220,9 @@ export default {
             filter_select,
             filter_pricetype,
             filter_source,
-            filter_fixedSupplier
-          })
-          .then(res => {
+            filter_fixedSupplier,
+            filter_LastTransaction
+          }).then(res => {
             if (res.data.success) {
               this.list = res.data;
             } else {
@@ -1092,9 +1238,6 @@ export default {
             this.myConfirm("网络错误,请重试");
             this.showLoading = false;
           });
-      } else {
-        $label.text("");
-      }
 
       $("#cg_filter").modal("hide");
     });
@@ -1106,6 +1249,8 @@ export default {
       this.filter_select = 0;
       this.filter_pricetype = 0;
       this.filter_source = 0;
+      this.filter_fixedSupplier = 0;
+      this.filter_LastTransaction = 0;
       //请求数据
       this.showLoading = true;
       this.$http
@@ -1118,7 +1263,9 @@ export default {
           sorting: this.sorting,
           filter_select: 0,
           filter_pricetype: 0,
-          filter_source: 0
+          filter_source: 0,
+          filter_fixedSupplier:0,
+          filter_LastTransaction:0
         })
         .then(res => {
           if (res.data.success) {
@@ -1245,9 +1392,14 @@ export default {
     })
 
   },
+  beforeUpdate(){
+    $("[data-toggle='tooltip']").tooltip('destroy');
+    // $("[data-toggle='popover']").popover('destroy');
+    $("input[name='exception']").unbind();
+  },
   updated() { 
     
-    console.log("已更新!")
+    //console.log("已更新!")
     this.offsetLeft = $(".fixed_top").offset().left;
     //启用tooltip
     $("[data-toggle='tooltip']").tooltip();
@@ -1257,22 +1409,10 @@ export default {
       trigger: "hover",
       container: "body"
     });
-     //如果供应商大于6加,那么设置第二个td宽度为260px;
-    //console.log(this.list);
-    // if(this.list && this.list.data.purchasingCompanyList.length>6){
-    //   $('td:eq(1)').addClass('fixWidth');
-    //   $('th:eq(1)').addClass('fixWidth');
-    //   console.log("超过6个供应商")
-    // }else if(this.list && this.list.data.purchasingCompanyList.length<=6){
-    //   $('td:eq(1)').removeClass('fixWidth');
-    //   $('th:eq(1)').removeClass('fixWidth');
-    //   console.log("低于6个供应商")
-    // }
 
     //采购偏好设置中例外条件
     //console.log( $("input[name='exception']") );
     $("input[name='exception']").change((e)=>{
-      //console.log(111)
         var $this =  $(e.target);
         if($this.val()==1){
             $('#cg_preference input.percent').prop('disabled',false);
@@ -1320,7 +1460,8 @@ export default {
           filter_select: this.filter_select,
           filter_pricetype: this.filter_pricetype,
           filter_source: this.filter_source,
-          filter_fixedSupplier: this.filter_fixedSupplier
+          filter_fixedSupplier: this.filter_fixedSupplier,
+          filter_LastTransaction:this.filter_LastTransaction
         })
         .then(res => {
           if (res.data.success) {
@@ -1477,6 +1618,8 @@ export default {
       this.filter_select = 0;
       this.filter_pricetype = 0;
       this.filter_source = 0;
+      this.filter_fixedSupplier = 0;
+      this.filter_LastTransaction = 0;
       this.showCanBuy = true;
       this.OverStock = false;
       this.PurchaseSpxq = false;
@@ -1707,6 +1850,7 @@ export default {
       if (!this.productList[ind].sellerJson1[key].canSelect) return;
       //如果未勾选
       if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) {
+        this.productList[ind].Goods_Pcs_Small = this.productList[ind].sellerJson1[key].Goods_Pcs_Small;  //改变中包装倍数
         var bargain = 0;
         var hasSelect = 0;
         var preSelectIndex = null;
@@ -1903,11 +2047,16 @@ export default {
             hasOverdue++;
           }
         })
+        var Goods_Pcs_Small = this.productList[ind].sellerJson1[key].Goods_Pcs_Small;
+        var balance = initialBuyCount%Goods_Pcs_Small;
+        if(initialBuyCount-balance>0){
+          initialBuyCount+=(Goods_Pcs_Small-balance)
+        }
         //近效期数量变化
         if(this.productList[ind].sellerJson1[key].overdue && hasOverdue==0){
           this.list.data.CountSpxq++;
         }
-        //console.log(initialBuyCount);
+   
         //当前选择的供应商库存大于未购买的数量  ...
         if( this.productList[ind].sellerJson1[key].stock >= initialBuyCount && initialBuyCount>=0 ){
           this.productList[ind].sellerJson1[key].buyCount = initialBuyCount || 1;
@@ -2038,26 +2187,24 @@ export default {
     },
     //点击购买数量输入框,如果是多门店则弹出模态框修改
     showBranchesModal(e, ind) {
-      if (
-        this.productList[ind].BranchesCount > 0 &&
-        this.productList[ind].isSelect
-      ) {
-        var html = "";
+      if (this.productList[ind].BranchesCount > 0 &&this.productList[ind].isSelect ) {
+        var html = "<div class='editBox'>";
         var arr = this.productList[ind].BranchesJson;
         //console.log(arr.length);
         for (var i = 0; i < arr.length; i++) {
           html += `<p class="row">
             <span class="left col-xs-4">${arr[i].NameBranches}</span>
-            <span class="right col-xs-8">
+            <span class="right col-xs-4">
               <input style="width:100px;" data-id=${
                 arr[i].id
               } data-branchesindex=${i} value=${
             arr[i].BuyCount
           } class="input form-control" type='number'/>
             </span>
+             <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
           </p>`;
         }
-        html += `<p class="row">
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
             <span class="left col-xs-4">总计</span>
             <span class="right total col-xs-8">${
               this.productList[ind].BuyCount
@@ -2065,9 +2212,40 @@ export default {
           </p>`;
         $(".branchesModal .branchesContent").html(html);
         $(".branchesModal .post").data("productIndex", ind);
+        $(".branchesModal .post").data("psn", this.productList[ind].PSN);
         $(".branchesModal").slideDown();
       } else if (this.productList[ind].BranchesCount > 0) {
-        e.target.blur();
+        try {
+            e.target.blur();
+        } catch (error) {
+          
+        } 
+      }
+    },
+    showBranchesModal2(ind){
+      if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 ){
+          var html = "<div class='editBox'>";
+
+          html += `<p class="row">
+            <span class="left col-xs-4">${this.list.data.BranchesList[0]}</span>
+            <span class="right col-xs-4">
+              <input style="width:100px;"  value=${
+            this.productList[ind].BuyCount
+          } class="input form-control" type='number'/>
+            </span>
+             <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
+          </p>`;
+
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
+            <span class="left col-xs-4">总计</span>
+            <span class="right total col-xs-8">${
+              this.productList[ind].BuyCount
+            }</span>
+          </p>`;
+        $(".branchesModal .branchesContent").html(html);
+        $(".branchesModal .post").data("productIndex", ind);
+        $(".branchesModal .post").data("psn", this.productList[ind].PSN);
+        $(".branchesModal").slideDown();
       }
     },
     //计算小计
@@ -3378,23 +3556,37 @@ export default {
         }
       })
       if(product.openMultiple && item.buyCount>0 && isMain){
+       
         if( item.storeid != this.list.data.PreferredSupplier ){
-          nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span><br/>${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
+          nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>&nbsp;${item.Remarks}<br/>${percent>0 ? '较主供应商价格' : ''} ${str}`).show();
         }else{
-          nextP.html(`库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+          nextP.html(`库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>&nbsp;${item.Remarks}`).show();
         }
         
       }else if(product.openMultiple && item.buyCount>0 && !isMain){
-        nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>`).show();
+         
+        nextP.html(`${item.fixedSupplierTooltip}<br/>库存:${item.stock}&nbsp;&nbsp;效期:<span style="color:${item.overdue?'red':'#333'}">${item.spxq.slice(2)||'-'}</span>&nbsp;${item.Remarks}`).show();
       }else if(!product.openMultiple && isMain && item.storeid != this.list.data.PreferredSupplier ){
+     
         if(str.length>0 && percent>0){
-          nextP.html(`${item.fixedSupplierTooltip}<br/>较主供应商价格 ${str}`).show();
+          nextP.html(`${item.fixedSupplierTooltip}<br/>较主供应商价格 ${str}&nbsp;${item.Remarks}`).show();
+        }else if(item.Remarks){
+          nextP.html(`${item.Remarks}`).show();
         }
         
       }else if(!product.openMultiple && !isMain){
-        if(item.fixedSupplierTooltip)  nextP.html(`${item.fixedSupplierTooltip}`).show();
+       
+        if(item.fixedSupplierTooltip){
+          nextP.html(`${item.fixedSupplierTooltip}&nbsp;${item.Remarks}`).show();
+        }else if(item.Remarks){
+          nextP.html(`${item.Remarks}`).show();
+        }
       }else if(item.fixedSupplierTooltip && isMain){
-        nextP.html(`${item.fixedSupplierTooltip}`).show();
+   
+        nextP.html(`${item.fixedSupplierTooltip}&nbsp;${item.Remarks}`).show();
+      }else if(item.Remarks){
+
+        nextP.html(`${item.Remarks}`).show();
       }
 
     },
@@ -3497,6 +3689,113 @@ export default {
     },
     trChangeIndex(ind){
       this.nowTrIndex = ind;
+    },
+    midChange(ind,e){
+      var count = this.productList[ind].BuyCount;
+      var mid = this.productList[ind].Goods_Pcs_Small;
+      var single = count%mid;
+      var ce = 0;
+      if(single>0){
+         ce = mid - (single);
+      }
+     
+      count+=ce;
+      this.productList[ind].BuyCount = count;
+      console.log(count);
+      $(e.target).parent().find('input').val(count);
+
+
+
+      var prevBuyCount=this.productList[ind].BuyCount0;
+      var val = count;
+      // console.log(val);
+      if (isNaN(val) || val <= 0) {
+        val = 1;
+        //this.productList[ind].isSelect=false;
+      }
+      this.productList[ind].BuyCount = val;
+      this.$set(this.productList,ind,this.productList[ind]);
+
+      //计算超库存
+      var price = null, //选中的商品的价格 供计算小计使用
+        pIndex = null; //选中商品对应的药企的下标 供计算小计使用
+      this.productList[ind].sellerJson1.forEach((ele, i) => {
+        if (ele && ele.selected) {
+          price = ele.price;
+          pIndex = i;
+          var stock = ele.stock; //选中商家的库存数量
+          if (val > stock && !this.productList[ind].outTop1) {
+            //如果修改后的数量大于选中商品的库存且之前没有超库存
+            this.productList[ind].outTop0 = true;
+            this.productList[ind].outTop1 = true;
+            this.list.data.CountPurchaseSock++;
+          } else if (
+            this.productList[ind].outTop1 &&
+            this.productList[ind].isSelect &&
+            val <= stock
+          ) {
+            this.productList[ind].outTop0 = false;
+            this.productList[ind].outTop1 = false;
+            this.list.data.CountPurchaseSock--;
+          }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            //当修改后的购买数量大于之前的购买数量
+            if(val>prevBuyCount){
+              var save= (val-prevBuyCount)*(this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += (val-prevBuyCount)*price;
+            }else if(val<prevBuyCount){
+              var save= (prevBuyCount - val) * (this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll -= save;
+              this.list.data.SelectPriceAll -= (prevBuyCount - val)*price;
+            }
+          
+          }
+
+        }
+      });
+
+      //计算小计
+      var buyCount0 = this.productList[ind].BuyCount0; //上次的购买数量
+      if (this.productList[ind].isSelect) {
+        if (val > buyCount0) {
+          //增加
+          var ce = val - buyCount0; //差额
+          this.list.data.purchasingCompanyList[pIndex].Total += ce * price;
+          this.productList[ind].BuyCount0 = val;
+        } else if (val < buyCount0) {
+          //减少
+          var ce = buyCount0 - val;
+          this.list.data.purchasingCompanyList[pIndex].Total -= ce * price;
+          this.productList[ind].BuyCount0 = val;
+        }
+      } else {
+        this.productList[ind].BuyCount0 = val;
+      }
+
+      //向服务器发送数据
+      this.$http
+        .post(this.url+"PurchasePlanModifyBuyCount", {
+          id: this.productList[ind].id,
+          BuyCount: val
+        })
+        .then(res => {
+          if(!res.data.success){
+            if(res.data.info=="请先登录"){
+              $('.loginConfirm').fadeIn();
+            }else{
+              this.myToast(res.data.info);
+            }
+          }
+        })
+        .catch(err => {
+          //console.log(err);
+          this.myToast("网络错误,请重试!");
+        });
+
+
+
     }
 
 
@@ -3520,7 +3819,7 @@ export default {
         }
 
       })
-      //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
+      //重新计算productList,使其sellerJson1数组长度等于商家个数
       var time = new Date();
       time.setFullYear(time.getFullYear() + 1);
       var len = this.list.data.purchasingCompanyList.length;
@@ -3561,11 +3860,13 @@ export default {
             }
             if (productId == companyId) {
               ele.sellerJson1[j].canSelect = canSelect;
+             
               output[i] = ele.sellerJson1[j];
               output[i].prevSelected = output[i].selected ? true : false;
-              // if(output[i].selected){
-              //   output[i].buyCount = output[i].stock;
-              // }
+              output[i].ismidpacking = this.list.data.purchasingCompanyList[i].ismidpacking;
+              if(output[i].selected){
+                ele.Goods_Pcs_Small = output[i].Goods_Pcs_Small;
+              }
               if (!ele.isSelect) output[i].selected = false; //如果商品列的checkbox未选中,那么对应企业的药品也不能选中
               //库存为0标识线下商品
               if (output[i].stock == 0) output[i].offline = true;
@@ -3605,7 +3906,7 @@ export default {
         
 
       });
-      //console.log(this.productList);
+      
     }
   },
   computed: {
@@ -3647,7 +3948,8 @@ export default {
       return this.list.data.purchasingCompanyList.filter((item)=>{
         return item.storeid>0;
       })
-    }
+    },
+
   }
 };
 </script>
@@ -4010,6 +4312,9 @@ export default {
               &.nowTrIndex{
                 background-color: #f5f5f5;
               }
+              >input{
+                cursor:pointer;
+              }
               >.fa-window-close{
                 color: #ddd;
                 position: absolute;
@@ -4019,6 +4324,10 @@ export default {
                 &:hover{
                   color:rgb(214, 48, 48);
                 }
+              }
+              >p{
+                margin:0;
+                color:#999;
               }
             }
             &:nth-child(2) {
@@ -4060,7 +4369,19 @@ export default {
                 overflow: hidden;
                 text-overflow:ellipsis;
                 white-space: nowrap;
+                
               }
+              >.lastTransaction{
+                  color:#fff;
+                  background-color: #999;
+                  padding:0 4px;
+                  position: absolute;
+                  right:0;
+                  bottom:0;
+                  background-color: rgba(0, 0, 0, 0.1);
+                  font-size: 12px;
+              }
+              
             }
             &:nth-child(3) {
               width: 50px;
@@ -4112,7 +4433,7 @@ export default {
               &.fixed{
                 box-shadow: 6px 0px 10px rgba(0,0,0,.35);
               }
-              > input {
+               input {
                 background-color: #fff;
                 text-align: center;
                 &.out_top {
@@ -4120,11 +4441,12 @@ export default {
                   border-color: red;
                 }
               }
-              >button.open{
-                position:absolute;
-                bottom:0;
-                left:10px;
+              button.open{
+                // position:absolute;
+                // bottom:0;
+                // left:10px;
                 border-radius: 0;
+                z-index: 666;
               }
               >button.opened,>button.stop{
                 position:absolute;
@@ -4159,6 +4481,14 @@ export default {
                 height: 100%;
                 padding: 10px;
                 padding-left:0;
+                >b{
+                  position: absolute;
+                  left:0;
+                  top:0;
+                  border:10px solid #5bc0de;
+                  border-right-color: transparent;
+                  border-bottom-color: transparent;
+                }
                 > p {
                   padding-right: 6px;
                   margin: 0;
@@ -4325,6 +4655,7 @@ export default {
     width: 600px;
     height: 320px;
     background-color: #fff;
+    border-radius: 10px;
     > .title {
       padding: 15px;
       margin: 0;
@@ -4371,6 +4702,7 @@ export default {
     width: 600px;
     height: 320px;
     background-color: #fff;
+    border-radius: 10px;
     > .title {
       padding: 15px;
       margin: 0;
@@ -4380,14 +4712,19 @@ export default {
       }
     }
     > .branchesContent {
+      height:210px;
       padding: 15px;
-      > p {
+       p {
         height: 40px;
         line-height: 40px;
         > .left {
           text-align: right;
           color: #333;
           font-weight: bold;
+        }
+        .fa-minus-circle{
+          color:red;
+          cursor: pointer;
         }
       }
     }
