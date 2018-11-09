@@ -128,7 +128,42 @@
             <span class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
               <input @change="upLoad($event)" type="file"/>
             </span>
+           
           </div>
+
+           <div class="pageTurn text-right col-xs-12" v-if="list">
+             <p style="display:inline-block;vertical-align:top;">
+               显示方式:
+                <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
+                  <option value="0" :selected="list.data.IsPage==false">不分页</option>
+                  <option value="1" :selected="list.data.IsPage">分页</option>
+                </select>
+             </p>
+              <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
+                当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
+                <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
+                  <option value="20" >20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                </select>条
+                <ul style="margin:0;vertical-align:bottom;" class="pagination">
+                  <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
+                    <a href="javascript:;">
+                      <span>&laquo;</span>
+                    </a>
+                  </li>
+                  <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
+                  <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
+                    <a href="javascript:;">
+                      <span>&raquo;</span>
+                    </a>
+                  </li>
+               </ul>
+              </p>
+              
+            </div>
+
         </div>
         <!-- 采购详情表格 -->
         <div class="detail">
@@ -161,13 +196,13 @@
                     <span class="sign_offlilne" v-else>线下</span>
                     <!-- <label>最低价/匹配/总商品</label>
                     <p style="text-align:left">{{item.minPriceCount+'/'+item.MatchingCount+'/'+item.Count}}</p> -->
-                    <button class="btn btn-block btn-default" style="margin-bottom:6px;" :disabled="!item.Enabled" @click="prioritySort(item.storeid)">匹配商品优先排序</button>
-                    <a href="javascript:;">
+                    <button v-if="item.storeid!=0" class="btn btn-block btn-default" style="margin-bottom:6px;" :disabled="!item.Enabled" @click="prioritySort(item.storeid)">匹配商品优先排序</button>
+                    <a v-if="item.storeid!=0" href="javascript:;">
                       <button @click="cancelMatch(index)" v-if="item.Enabled" class="btn btn-block btn-danger">取消匹配</button>
                       <button @click="startMatch(index)" v-else class="btn btn-block btn-danger">启用匹配</button>
                     </a>
                   </div>
-                  <span v-if="list.data.PreferredSupplier == item.storeid" data-toggle="tooltip" data-placement="top" title="主供应商" ></span>
+                  <span v-if="(list.data.PreferredSupplier == item.storeid) && item.storeid!=0" data-toggle="tooltip" data-placement="top" title="主供应商" ></span>
                 </th>
               </tr>
             </thead>
@@ -179,7 +214,7 @@
               <tr v-for="(product,ind) in productList" :key="ind" @click="trChangeIndex(ind)" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE,'nowTrIndex':nowTrIndex == ind}">
                 <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <input type="checkbox" @click="selectOne($event,ind)" v-model="product.isSelect" :disabled="!product.canBuy">
-                  <p v-text="ind+1"></p>
+                  <p v-text="list.data.IsPage?(ind+1)+(list.data.PageIndex-1)*list.data.PageSize:ind+1"></p>
                   <i @click="deleteTr(ind,product.id)" title="删除" class="fa fa-window-close fa-lg"></i>
                 </td>
                 <!-- 商品名称列 -->
@@ -214,7 +249,7 @@
                 <!-- 采购数量 -->
                 <td  :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
                   <div class="inputContainer" @mouseenter="mouseOn(ind)" @mouseleave="mouseOff(ind)" style="height:46px;">
-                    <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
+                    <input type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control" @focus="showBranchesModal($event,ind)" @change="buyCountChange($event,ind)" :class="{'out_top':product.outTop1,'mid':product.BuyCount%product.Goods_Pcs_Small>0}" v-model.number.lazy="product.BuyCount" :disabled="!product.canBuy">
                     <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
                       <span v-html="multipleCount(ind)"></span>
                         /
@@ -225,7 +260,7 @@
                   </div>
                   <button @mouseenter="showClose($event)" @mouseleave="showOpen($event)" @click="closeMultiple(ind,$event)" v-show="product.canMultiple && product.openMultiple" class="opened btn btn-primary btn-xs">多选</button>
                   <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;top:28px;" class="fa fa-exclamation-circle"></i>
-                  <p v-show="product.Goods_Pcs_Small>1 && product.BranchesCount==0 && (!product.openMultiple) &&(!product.mouseOn)" @click="midChange(ind,$event)" style="color:#999;position:absolute;left:26%;bottom:0;margin:0;font-size:12px;cursor:pointer;">
+                  <p v-show="product.Goods_Pcs_Small>1 && product.BranchesJson==null && (!product.openMultiple) " @click="midChange(ind,$event)" style="color:#999;position:absolute;left:26%;top:0;margin:0;font-size:12px;cursor:pointer;">
                     中包装  
                     <span>{{product.Goods_Pcs_Small}}</span>
                     <i data-toggle="popover" data-placement="bottom" data-content="所选供应商只能按中包装整倍数采购，点击中包装数量可自动修改" class="fa fa-question-circle"></i>
@@ -246,8 +281,10 @@
                     <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
                     <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
                     <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
-                      <p>库存 {{item.stock}}</p>
-                      <p>效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
+                      <p v-if="item.storeid != 0">库存 {{item.stock}} <span v-if="item.Goods_Pcs_Small>1">{{"["+item.Goods_Pcs_Small+"]"}}</span></p>
+                      <p v-else>{{item.CompanyName}}</p>
+                      <p v-if="item.storeid != 0">效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
+                      <p v-else>{{"共"+item.OfflineSupplierCount+"个报价"}}</p>
                     </div>
                     <div v-show="product.openMultiple && item.buyCount>0 &&product.isSelect">
                       <input style="margin-left:4px;" @click.stop="multipleClick" @change="multipleBuyCountChange(ind,key,item.stock,$event)" type="text" class="form-control" :value="item.buyCount"   :class="{'out_top':item.buyCount>item.stock}">
@@ -260,12 +297,44 @@
                   <!-- popover -->
                   <p style="display:none;">较主供应商价格 + 10%</p>
                   <!-- 主供应商 较最低价  百分比   -->
-                  <span v-if="!product.openMultiple && item && item.price > product.minPrice && item.storeid == list.data.PreferredSupplier">{{'+'+((item.price-product.minPrice)/product.minPrice*100).toFixed(2)+'%'}}</span>
+                  <span v-if="!product.openMultiple && item && item.price > product.minPrice && item.storeid == list.data.PreferredSupplier && item.storeid!=0">{{'+'+((item.price-product.minPrice)/product.minPrice*100).toFixed(2)+'%'}}</span>
                 </td>
               
               </tr>
             </tbody>
           </table>
+        </div>
+        <div class="pageTurn text-right col-xs-12" v-if="list">
+          <p style="display:inline-block;vertical-align:top;">
+            显示方式:
+            <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
+              <option value="0" :selected="list.data.IsPage==false">不分页</option>
+              <option value="1" :selected="list.data.IsPage">分页</option>
+            </select>
+          </p>
+          <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
+            当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
+            <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
+              <option value="20" >20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>条
+            <ul style="margin:0;vertical-align:bottom;" class="pagination">
+              <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
+                <a href="javascript:;">
+                  <span>&laquo;</span>
+                </a>
+              </li>
+              <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
+              <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
+                <a href="javascript:;">
+                  <span>&raquo;</span>
+                </a>
+              </li>
+            </ul>
+          </p>
+          
         </div>
       </div>
 
@@ -624,6 +693,38 @@
         </p>
       </div>
     </div>
+    <!-- 16、线下供应商选择模态框-->
+    <div class="offlineModal" style="display:none;">
+      <div class="offlineBody">
+        <h4 class="title">
+          供应商选择
+          <span class="rf" @click="closeOffline" >&times;</span>
+        </h4>
+        <div class="offlineContent">
+          <ul>
+            <li v-for="(item,index) in offlineModalData" :key="index">
+              <p class="companyName">{{item.CompanyName}}</p>
+              <p class="total" :class="{'online':getIsOffline(item.storeid)}" v-text="getOfflineTotal(item.storeid)"></p>
+              <div @click="offlineSelect(item.storeid)" class="info" :class="{'selected':item.selected}">
+                  <p class="price">{{item.price}}</p>
+                  <p class="stock">
+                    {{'库存 '+item.stock}}
+                    <span v-if="item.Goods_Pcs_Small>1" v-text="'['+item.Goods_Pcs_Small+']'"></span>
+                  </p>
+                  <p class="spxq" v-text="getOfflineDate(item.spxq)"></p>
+                  <i v-if="item.selected" class="icon">
+                    <span class="fa fa-check"></span>
+                  </i>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="offlineFooter">
+          <button @click="offlinePost" class="post btn btn-primary">确定</button>
+        </div>
+      </div>
+    </div>
+
 
 
   </div>
@@ -674,7 +775,11 @@ export default {
       prevScrollHeight:0,          //上一个tr高度
       halfScreenHeight:0,          //屏幕高度的一半
       nowTrIndex:null,                 //当前方向箭头滚动到的下标
-      offsetLeft:0                  //固定顶部距离页面左侧的距离
+      offsetLeft:0,                  //固定顶部距离页面左侧的距离
+      offlineModalData:[],             //点击线下汇总弹出显示数据
+      pageIndex:1,
+      pageSize:100,
+
     };
   },
   created() {
@@ -708,11 +813,13 @@ export default {
     if(localStorage[this.id+'sorting']) this.sorting = Number(localStorage[this.id+'sorting']);
     if(localStorage[this.id+'showCanBuy'])  this.showCanBuy=Boolean(Number(localStorage[this.id+'showCanBuy']));
     if(localStorage[this.id+'nowTrIndex'])  this.nowTrIndex=Number(localStorage[this.id+'nowTrIndex']);
+    if(localStorage[this.id+'PageIndex']) this.pageIndex = Number(localStorage[this.id+'PageIndex']);
+    if(localStorage[this.id+'PageSize']) this.pageSize = Number(localStorage[this.id+'PageSize']);
     this.getData();
   },
   mounted() {
-    //console.log("已挂载!");
-    //屏幕高度的一半
+
+    //屏幕高度的1/4
     this.halfScreenHeight = $(window).height()/4;
     //已选中商品右上角图标切换
     $(".product_container").on("mouseenter", ".icon", function() {
@@ -755,7 +862,7 @@ export default {
       var value = parseFloat($this.val());
       var price = parseFloat($(".yjModal .price").text()); //店铺价格
       if (isNaN(value) || value < 0 || value > price) {
-        console.log("店铺价格是"+price);
+        // console.log("店铺价格是"+price);
         $this.val(0);
         this.myToast("请输入合理价格");
         $this.focus();
@@ -1031,7 +1138,10 @@ export default {
       params.append('psn',$branchesModal.find('.post').data('psn'));
       $branchesModal.find('.editBox>.row').each(function(key,dom){
         var $row =$(dom);
-        var BranchesName = $row.find('.left').text() || $row.find('.left option:selected').text();
+
+        var cloneRow = $row.find('.left').clone();
+        cloneRow.find(":nth-child(n)").remove();
+        var BranchesName = cloneRow.text() || $row.find('.left option:selected').text();
         var BranchesBuyCount = $row.find('.right>input').val();
         params.append(key,BranchesName);
         params.append(key+'_1',BranchesBuyCount);
@@ -1050,37 +1160,39 @@ export default {
             }
           }else{
             var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
-            this.productList[productIndex].BranchesJson.length = 0;
+            this.productList[productIndex].BranchesJson = null;
+            this.productList[productIndex].BranchesJson=[];
             for(var item of JSON.parse(res.data.data)){
               this.productList[productIndex].BranchesJson.push(item);
             }
           }
         })
         .catch(err => {
-          //console.log(err);
+          // console.log(err);
           this.myConfirm("网络错误,请重试!");
         });
       //向服务器发送修改后的总数
-      this.$http
-        .post(this.url+"PurchasePlanModifyBuyCount", {
-          id: this.productList[productIndex].id,
-          BuyCount: total
-        })
-        .then(res => {
-          if (!res.data.success) {
-            this.myToast(res.data.info);
-          }
-        })
-        .catch(err => {
-          //console.log(err);
-          this.myToast("网络错误,请重试");
-        });
+      /* this.$http
+          .post(this.url+"PurchasePlanModifyBuyCount", {
+            id: this.productList[productIndex].id,
+            BuyCount: total
+          })
+          .then(res => {
+            if (!res.data.success) {
+              this.myToast(res.data.info);
+            }
+          })
+          .catch(err => {
+            //console.log(err);
+            this.myToast("网络错误,请重试");
+      }); */
 
       $branchesModal.slideUp();
     });
 
     //采购偏好设置提交按钮
     $("#cg_preference .post").click(e => {
+      this.pageIndex = 1;
       //清除之前的筛选条件
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1111,9 +1223,9 @@ export default {
         !$("#cg_preference input[name='IsJxq']").is(":checked")
       );
        this.list.data.IsMatchJxq = Boolean(IsJxq);
-      var habit =
-        Number($("#cg_preference input[name='habit']:checked").val()) || 0;
+      var habit = Number($("#cg_preference input[name='habit']:checked").val()) || 0;
       this.list.data.PriceEqual = habit;
+
       
       var PreferredSupplier = Number( $("#cg_preference select[name='PreferredSupplier'] option:selected").val() );
       var LimitPercentage = Number( $("#cg_preference .percent").val() ) || 0;
@@ -1169,6 +1281,7 @@ export default {
     //筛选
     //1.筛选提交按钮
     $("#cg_filter .post").click(e => { 
+      this.pageIndex = 1;
       //筛选数量
       var count = 0;
       var filter_select = Number(
@@ -1243,6 +1356,7 @@ export default {
     });
     //2.清除筛选按钮
     $("#cg_filter .cancel").on("click", e => {
+      this.pageIndex = 1;
       //console.log(e.target);
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1328,6 +1442,8 @@ export default {
         localStorage[this.id+'sorting'] = this.sorting;
         localStorage[this.id+'showCanBuy'] = Number(this.showCanBuy);
         localStorage[this.id+'nowTrIndex'] = this.nowTrIndex;
+        localStorage[this.id+'PageIndex'] = this.list.data.PageIndex;
+        localStorage[this.id+'PageSize'] = this.list.data.PageSize;
       }else{
         localStorage[ this.id] = 0;
       }
@@ -1359,7 +1475,7 @@ export default {
     })
     
 
-    //类似EXCEL滚动
+    //滚动
     var lastPress = new Date();
     var nowPress = null;
     $(window).keydown((e)=>{
@@ -1367,7 +1483,6 @@ export default {
         var Scroll = $(window).scrollTop();
         nowPress=new Date();
         if(nowPress-lastPress>300){
-          //console.log(this.nextScrollHeight);
           $('html:not(:animated),body').animate({
             scrollTop:Scroll+this.nextScrollHeight
           },'slow','linear')
@@ -1461,7 +1576,9 @@ export default {
           filter_pricetype: this.filter_pricetype,
           filter_source: this.filter_source,
           filter_fixedSupplier: this.filter_fixedSupplier,
-          filter_LastTransaction:this.filter_LastTransaction
+          filter_LastTransaction:this.filter_LastTransaction,
+          pageIndex : this.pageIndex,
+          pageSize : this.pageSize
         })
         .then(res => {
           if (res.data.success) {
@@ -1572,7 +1689,7 @@ export default {
           //console.log("created中请求数据失败");
         });
     },
-    //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
+    //重新计算productList,使其sellerJson1数组长度等于商家个数,便于循环
     resetProductList() {
       var len = this.list.data.purchasingCompanyList.length;
       this.productList.forEach((ele, index, arr) => {
@@ -1611,6 +1728,7 @@ export default {
       });
     },
     chooseLow() {
+      this.pageIndex = 1;
       //清楚筛选条件
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1783,7 +1901,7 @@ export default {
             params.append("id", this.productList[ind].id);
             params.append("BuyCount", this.productList[ind].BuyCount);
           this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
-            console.log(res.data)
+            // console.log(res.data)
           }).catch(err=>{
             this.myConfirm("网络错误,请重试!");
           })
@@ -1849,7 +1967,7 @@ export default {
       //如果是取消匹配下的店铺 直接return
       if (!this.productList[ind].sellerJson1[key].canSelect) return;
       //如果未勾选
-      if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) {
+      if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].storeid != 0) {
         this.productList[ind].Goods_Pcs_Small = this.productList[ind].sellerJson1[key].Goods_Pcs_Small;  //改变中包装倍数
         var bargain = 0;
         var hasSelect = 0;
@@ -1961,18 +2079,15 @@ export default {
             this.list.data.SelectSavePriceAll +=nowSave;
             this.list.data.SelectPriceAll += this.productList[ind].BuyCount * (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
           }
-          
-           
-
-
-          // if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-          //   //当修改后的购买数量大于之前的购买数量
-              
-          
-          // }
 
         }
-        // this.productList[ind].sellerJson1[key].bargain=bargain;   //转移议价
+        var storeid = this.productList[ind].sellerJson1[key].storeid;
+        this.productList[ind].sellerJsonValid.forEach((ele,i)=>{
+          ele.selected = false;
+          if(ele.storeid == storeid){
+             ele.selected = true;
+          }
+        })
         //向服务器发送数据选中的商品
         this.$http
           .post(this.url+"PurchasePlanChangeStoreid", {
@@ -2013,14 +2128,14 @@ export default {
           .catch(err => {
             this.myToast("网络错误,请重试!");
           });
-      } else if((this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) || (this.productList[ind].sellerJson1[key].buyCount>0 && this.productList[ind].openMultiple)) {
+      } else if((this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].storeid != 0) || (this.productList[ind].sellerJson1[key].buyCount>0 && this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].storeid != 0)) {
         //如果已勾选或者为多选供应商 buyCount>0 ,则开启议价窗口
         if (this.productList[ind].sellerJson1[key].offline) {
           this.myToast("线上商品才能议价");
           return;
         }
-        console.log(this.productList[ind].sellerJson1[key].buyCount);
-        console.log(this.productList[ind].openMultiple);
+        // console.log(this.productList[ind].sellerJson1[key].buyCount);
+        // console.log(this.productList[ind].openMultiple);
         $(".yjModal .post").data({
           productIndex: ind,
           storeIndex: key,
@@ -2036,8 +2151,8 @@ export default {
         $(".yjModal .price").text(this.productList[ind].sellerJson1[key].price);
         $(".yjModal .historyPrice").text(this.productList[ind].HistoryPrice);
         $(".yjModal .input").val(this.productList[ind].sellerJson1[key].bargain);
-        $(".yjModal").slideDown();
-      } else if(this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].buyCount==0){
+        $(".yjModal").show();
+      } else if(this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].buyCount==0 && this.productList[ind].sellerJson1[key].storeid != 0){
         //已经开启供应商多选且未选中此商品 buyCount的值为初始想购买的数量减去已经购买的数量
         var initialBuyCount = this.productList[ind].BuyCount;
         var hasOverdue = 0;
@@ -2083,6 +2198,11 @@ export default {
         //向服务器发送数据
         this.multiplePost(id,storeid,BuyCount,bargain);
 
+      } else if( this.productList[ind].sellerJson1[key].storeid == 0 && this.productList[ind].isSelect && !this.productList[ind].openMultiple){
+        $('.offlineModal .post').data('index',ind).data('key',key);
+        this.offlineModalData = this.productList[ind].sellerJsonValid;
+      }else if(this.productList[ind].sellerJson1[key].storeid == 0 && this.productList[ind].isSelect && this.productList[ind].openMultiple){
+        this.myToast("已开启线上多选,无法选择线下供应商!");
       }
     },
     //不可采产品tr禁用状态,input禁用,设置product的canBuy为false
@@ -2187,7 +2307,7 @@ export default {
     },
     //点击购买数量输入框,如果是多门店则弹出模态框修改
     showBranchesModal(e, ind) {
-      if (this.productList[ind].BranchesCount > 0 &&this.productList[ind].isSelect ) {
+      if (this.productList[ind].BranchesJson != null &&this.productList[ind].isSelect ) {
         var html = "<div class='editBox'>";
         var arr = this.productList[ind].BranchesJson;
         //console.log(arr.length);
@@ -2223,7 +2343,7 @@ export default {
       }
     },
     showBranchesModal2(ind){
-      if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 ){
+      if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 && this.productList[ind].BranchesJson == null ){
           var html = "<div class='editBox'>";
 
           html += `<p class="row">
@@ -2236,6 +2356,29 @@ export default {
              <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
           </p>`;
 
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
+            <span class="left col-xs-4">总计</span>
+            <span class="right total col-xs-8">${
+              this.productList[ind].BuyCount
+            }</span>
+          </p>`;
+        $(".branchesModal .branchesContent").html(html);
+        $(".branchesModal .post").data("productIndex", ind);
+        $(".branchesModal .post").data("psn", this.productList[ind].PSN);
+        $(".branchesModal").slideDown();
+      }else if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 && this.productList[ind].BranchesJson != null){
+        var html = "<div class='editBox'>";
+        for(var item of this.productList[ind].BranchesJson){
+          html += `<p class="row">
+            <span class="left col-xs-4">${item.NameBranches}</span>
+            <span class="right col-xs-4">
+              <input style="width:100px;"  value=${
+            item.BuyCount
+          } class="input form-control" type='number'/>
+            </span>
+             <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
+          </p>`;
+        }
         html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
             <span class="left col-xs-4">总计</span>
             <span class="right total col-xs-8">${
@@ -3042,22 +3185,27 @@ export default {
     },
     //是否显示可采
     changeShowCanBuy(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示超库存
     changeOverStock(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示近效期
     changePurchaseSpxq(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示价格变化
     changePriceChange(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //添加店铺匹配
     addStore() {
+      this.pageIndex = 1;
       var params = new URLSearchParams();
       this.$http
         .post(this.url+"VendorAddSelectAllList",params)
@@ -3445,7 +3593,7 @@ export default {
         params.append("id", this.productList[ind].id);
         params.append("BuyCount", this.productList[ind].BuyCount);
         this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
-          console.log(res)
+          // console.log(res)
         }).catch(err=>{
           this.myConfirm("网络错误,请重试!");
         })
@@ -3701,7 +3849,7 @@ export default {
      
       count+=ce;
       this.productList[ind].BuyCount = count;
-      console.log(count);
+      // console.log(count);
       $(e.target).parent().find('input').val(count);
 
 
@@ -3796,6 +3944,271 @@ export default {
 
 
 
+    },
+    closeOffline(){
+      this.offlineModalData = [];
+      $('.offlineModal').hide();
+    },
+    getOfflineTotal(store_Id){
+      var str = "¥";
+      for(var i = 0; i<this.list.data.purchasingCompanyListAll.length; i++){
+        if(this.list.data.purchasingCompanyList[i] && this.list.data.purchasingCompanyList[i].storeid == store_Id){
+          str += this.list.data.purchasingCompanyList[i].Total.toFixed(2);
+          break;
+        }else if(this.list.data.purchasingCompanyListAll[i].storeid == store_Id){
+          str += this.list.data.purchasingCompanyListAll[i].Total.toFixed(2);
+          break;
+        }
+      }
+      return str;
+
+    },
+    getIsOffline(store_Id){
+      for(var i = 0; i<this.list.data.purchasingCompanyListAll.length; i++){
+        if(this.list.data.purchasingCompanyListAll[i].storeid == store_Id){
+          return this.list.data.purchasingCompanyListAll[i].isOnline;
+        }
+      }
+
+    },
+    getOfflineDate(date){
+      if (date.length>2) {
+        date = new Date(Date.parse((date).replace(/-/g,'/')));
+        date = date.toLocaleDateString();
+        var dayIndex=date.indexOf('日');
+        if(dayIndex!=-1){
+          date=date.replace(/[\u4e00-\u9fa5]/g,'/').slice(0,dayIndex);
+        }
+      } else {
+        date = "-";
+      }
+      if(date=="Invalid Date"){
+        date="-";
+      }
+
+      return date;
+
+    },
+    //线下模态框供应商选择提交
+    offlinePost(){
+
+      this.offlineModalData = [];
+      $('.offlineModal').hide();
+    },
+    offlineSelect(storeid){
+      var selectedStoreid = null;
+      var index = Number($('.offlineModal .post').data('index')),  //productList 下标
+          key   = Number($('.offlineModal .post').data('key')),    //purchasingCompanyList 下标
+          prevStoreid = null,
+          prevPrice = 0;
+
+      var buyCount = this.productList[index].BuyCount,
+          price = 0,
+          companyName = "",
+          chooseKey = null;
+
+       this.offlineModalData.forEach((item,ind)=>{
+        if(item.selected){
+          prevStoreid = item.storeid;
+          prevPrice = item.price;
+        }
+         item.selected = false;
+         if(item.storeid == storeid){
+
+           item.selected = true;
+           selectedStoreid = item.storeid;
+           price = item.price;
+           companyName =  item.CompanyName;
+           
+         }
+       })
+
+       //减去上次选中线下
+      if(prevStoreid != null){
+        this.list.data.purchasingCompanyListAll.forEach((item,ind)=>{
+          if(item.storeid == prevStoreid){
+            item.Total -= (buyCount*prevPrice);
+          } 
+        })
+      }
+
+       this.list.data.purchasingCompanyList.forEach((ele,i)=>{
+         if(selectedStoreid == ele.storeid){
+           chooseKey = i;
+         }
+       })
+
+      if(selectedStoreid<0){             //店铺id小于0,线下店铺
+        
+        for(var i =0;i<this.productList[index].sellerJson1.length;i++){
+          var item = this.productList[index].sellerJson1[i];
+          if( item && item.selected){     //减去之前选中的商品
+            //计算近效期
+            if (item.overdue && item.storeid>0) {       
+              //之前选中的商品是近效期
+               this.list.data.CountSpxq--;       
+            } else if(!item.overdue && item.storeid>0) {
+              this.list.data.CountSpxq++;
+            }
+
+            //计算节省金额
+            //  var preSave= buyCount*(this.productList[index].HistoryPrice - (item.bargain || item.price));
+            // this.list.data.SelectSavePriceAll -=preSave;
+            // this.list.data.SelectPriceAll -= buyCount * (item.bargain || item.price);
+            
+
+            this.list.data.purchasingCompanyList[i].Total -= (item.price * buyCount);
+            item.selected = false;
+
+          }
+          if(item && item.storeid == 0){  
+            
+            if(!item.selected){  //之前线下未选中
+              
+              this.list.data.purchasingCompanyList[key].Total += (price * buyCount);
+              this.list.data.purchasingCompanyListAll.forEach((ele,i)=>{
+                if(ele.storeid == selectedStoreid){
+                  ele.Total += (price * buyCount);
+                }
+              })
+ 
+              item.selected =true;
+            }else{               //之前线下已选中
+              this.list.data.purchasingCompanyList[key].Total -= (this.productList[index].sellerJson1[key].price * buyCount);
+              this.list.data.purchasingCompanyList[key].Total += (price * buyCount);
+            }
+            item.price = price;
+            item.CompanyName = companyName;
+            
+            
+            
+          }
+
+        }
+
+        //向服务器发送数据选中的商品
+        this.$http.post(this.url+"PurchasePlanChangeStoreid", {
+            id: this.productList[index].id,
+            storeid: storeid,
+            bargain: 0
+          }).then(res => {
+            if(!res.data.success){
+              if(res.data.info=="请先登录"){
+                $('.loginConfirm').fadeIn();
+              }else{
+                this.myToast(res.data.info);
+              }
+            }
+          }).catch(err => {
+            //console.log(err);
+            this.myConfirm("网络错误,请重试!");
+          });
+        //向服务器发送此商品勾选
+        var obj = {},
+            str = "";
+        obj[this.productList[index].id] = true;
+        for (var a in obj) {
+          str += a + ":";
+          str += obj[a];
+        }
+        var params = new URLSearchParams();
+        params.append("data", str);
+        this.$http
+          .post(this.url+"PurchasePlanSetisSelect", params)
+          .then(res => {
+            if (!res.data.success) {
+              this.myConfirm(res.data.info);
+            }
+          })
+          .catch(err => {
+            this.myToast("网络错误,请重试!");
+          });
+
+
+
+      }else if(selectedStoreid>0){     //店铺id大于0,线上店铺
+
+        this.productList[index].sellerJson1[chooseKey].selected?'':this.product_choose(index, chooseKey, buyCount, price);
+        
+
+      }
+
+
+    },
+    //切换是否分页
+    IsPage(e){
+      var isPage = $(e.target).val();
+      var params = new URLSearchParams();
+      params.append('IsPage',isPage);
+      params.append('PurchaseId',this.id);
+      this.$http.post(this.url+'PurchasePerferenceSettIsPage',params)
+          .then(res=>{
+            if(!res.data.success){
+              this.myConfirm(res.data.info);
+            }else{
+              this.nowTrIndex = 0;
+              this.getData();
+            }
+          }).catch(err=>{
+            this.myToast('网路错误,请重试!')
+          })
+
+
+    },
+    pageSizeChange(e){
+
+      var pageSize = $(e.target).val();
+      this.pageSize = Number(pageSize);
+      this.pageIndex = 1;
+      this.nowTrIndex = 0;
+      this.getData();
+    },
+    pageIndexChange(num){
+      this.pageIndex = num;
+      this.nowTrIndex = 0;
+
+      $('html:not(:animated),body').animate({
+        scrollTop:0
+      },300)
+
+      this.getData();
+    },
+    pageIndexAdd(){
+      if(this.pageIndex<this.list.data.PageCount){
+        this.pageIndex++;
+        this.nowTrIndex = 0;
+        $('html:not(:animated),body').animate({
+          scrollTop:0
+        },300)
+        this.getData();
+      }
+      
+    },
+    pageIndexReduce(){
+      if(this.pageIndex>1){
+        this.pageIndex--;
+        this.nowTrIndex = 0;
+        $('html:not(:animated),body').animate({
+          scrollTop:0
+        },300)
+        this.getData();
+      }
+      
+    },
+    //页码显示
+    showNum(num){
+      num = Number(num);
+      if(num == 1){
+        return num;
+      }else if(num == this.list.data.PageCount){
+        return num;
+      }else if(num+3 == this.list.data.PageIndex){
+        return "..."
+      }else if(this.list.data.PageIndex+3==num){
+         return "..."
+      }else {
+        return num;
+      }
     }
 
 
@@ -3889,7 +4302,8 @@ export default {
         ele.sellerJson1 = output;
         //判断canbuy
         for(var k=0,canBuy=0,multiple=0;k<ele.sellerJson1.length;k++){
-          if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled) canBuy++;
+          if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled && ele.sellerJson1[k].storeid != 0) canBuy++;
+          if(ele.sellerJson1[k]!=undefined && ele.sellerJson1[k].storeid == 0) canBuy += ele.sellerJson1[k].OfflineSupplierCount;
           if(ele.sellerJson1[k]!=undefined && ele.sellerJson1[k].buyCount>0) multiple++;
         }
         ele.canBuy = canBuy > 0 ? true : false;
@@ -3907,6 +4321,12 @@ export default {
 
       });
       
+      // console.log(this.productList);
+    },
+    offlineModalData(nVal){
+      if(nVal.length>0){
+        $('.offlineModal').show();
+      }
     }
   },
   computed: {
@@ -4063,6 +4483,7 @@ export default {
     background-color: #fff;
     border-top: 3px solid #d2d6de;
     padding: 10px;
+    padding-bottom:80px;
     margin-bottom: 60px;
     &.helpFixed{
       padding-top:70px;
@@ -4098,6 +4519,10 @@ export default {
             margin: auto;
             opacity: 0;
           }
+        }
+        >.pageTurn{
+          height:60px;
+          padding:10px;
         }
       }
     }
@@ -4437,8 +4862,12 @@ export default {
                 background-color: #fff;
                 text-align: center;
                 &.out_top {
-                  color: red;
-                  border-color: red;
+                  color: red !important;
+                  border-color: red !important;
+                }
+                &.mid{
+                  color:#F39C12;
+                  border-color:#F39C12;
                 }
               }
               button.open{
@@ -4535,6 +4964,9 @@ export default {
                     color: #999;
                     font-size: 12px;
                     margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                     &:first-child {
                       margin: 4px 0;
                     }
@@ -4684,6 +5116,124 @@ export default {
     }
   }
 }
+.offlineModal {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  > .offlineBody {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    width: 940px;
+    height: 420px;
+    background-color: #fff;
+    border-radius: 10px;
+    > .title {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid #ddd;
+      > .rf {
+        cursor: pointer;
+      }
+    }
+    > .offlineContent {
+      border-bottom: 1px solid #ddd;
+      height:320px;
+      overflow: auto;
+      >ul{
+        padding:10px;
+        &:after{
+          display: block;
+          content:'';
+          clear: both;
+        }
+        >li{
+          float:left;
+          width:100px;
+          height:100px;
+          border:1px solid #ddd;
+          text-align: right;
+          margin-bottom:20px;
+          >p{
+            margin: 0;
+            white-space: nowrap;  
+            text-overflow:ellipsis; 
+            overflow:hidden;
+            height:18px;
+            line-height: 18x;
+            &.companyName{
+              color:#999;
+              font-size:12px;
+            }
+            &.total{
+              background-color:rgb(252, 248, 227);
+              font-size:12px;
+            }
+            &.online{
+              background-color:rgb(218, 237, 247) !important;
+            }
+          }
+          >.info{
+            height:64px;
+            padding-right:14px;
+            color:#999;
+            position: relative;
+            cursor: pointer;
+            &.selected{
+              background-color:#dff0d8;
+            }
+            >p{
+              margin:0;
+              white-space: nowrap;  
+              text-overflow:ellipsis; 
+              overflow:hidden;
+              &.price{
+                font-size: 16px;
+                color:#000;
+              }
+              &.stock{
+                font-size: 12px;
+              }
+              &.spxq{
+                font-size: 12px;
+              }
+            }
+            >.icon{
+              position:absolute;
+              top:0;
+              right:0;
+              border:10px solid #5cb85c;
+              border-left-color:transparent;
+              border-bottom-color:transparent;
+              color:#fff;
+              >span{
+                position:absolute;
+                top:-12px;
+                right: -10px;
+              }
+            }
+          }
+        }
+      }
+    }
+    > .offlineFooter {
+      position:absolute;
+      bottom:0;
+      width:100%;
+      padding: 0 15px;
+      text-align: right;
+      height: 60px;
+      line-height: 60px;
+    }
+  }
+}
 .branchesModal {
   position: fixed;
   top: 0;
@@ -4792,6 +5342,7 @@ export default {
     bottom: 0;
     margin: auto;
     background-color: #fff;
+    border-radius: 10px;
     > .title {
       > span {
         cursor: pointer;
