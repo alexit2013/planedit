@@ -72,6 +72,11 @@
           <button type="button" @click="qjSearch" class="btn btn-primary" data-toggle="modal" data-target="#qjSearch">
             <i class="fa fa-search-plus"></i>全局
           </button>
+          <span v-if="list && list.data.Insert_fld_n>0" class="pull-right" style="height:34px;line-height:34px;">
+            <i class="fa fa-exclamation-circle" style="color:#CC0000"></i>
+            本次计划共有{{list.data.Insert_fld_n}}条商品导入失败,
+            <a :href="'/B30Purchase/ExportNoImportPlan?purchase_id='+id" download>点击下载</a>
+          </span>
       </div>
       <!-- 采购内容 -->
       <div class="box">
@@ -231,7 +236,7 @@
                   <p><span>{{product.DrugsBase_Specification}}</span> - {{product.DrugsBase_Manufacturer}}</p>
                   <p v-show="product.Recent_supplier"> 最近采购：{{product.Recent_supplier}} </p>
                   <span class="lastTransaction" v-if="product.LastTransaction" v-text="(new Date(product.LastTransaction)).toLocaleDateString()" data-toggle="tooltip" data-original-title="最近优E+采购时间"></span>
-                  
+                  <span @click="copyPSN(product.PSN)" class="psn" v-if="product.PSN" v-text="product.PSN" data-toggle="tooltip" data-placement="right" title="ERP编号,点击复制"></span>
                 </td>
                 <!-- 库存 -->
                 <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}"  v-show="showStock">{{product.Stock}}</td>
@@ -278,6 +283,7 @@
                       <span class="label label-warning">议</span>
                       {{item.bargain}}
                     </p>
+                    <span v-if="item.storeid == product.LastException && item.storeid!=0" style="color:#F39C12;" class="fa fa-exclamation-circle" data-toggle="tooltip" data-placement="top" title="上次选择供应商,存在开票/出库差异"></span>
                     <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
                     <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
                     <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
@@ -350,7 +356,6 @@
     </div>
 
     <!-- 模态框 -->
-    <!-- 傻逼一样自己写这么多提示框 -->
     <!-- 1、筛选按钮模态框 -->
     <div class="modal fade" id="cg_filter" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
       <div class="modal-dialog" role="document">
@@ -400,6 +405,15 @@
                     <label><input type="radio" name="filter_LastTransaction" value="-3"> 近三天</label>
                   </div>
               </div>
+              <div class="form-group row">
+                  <div class="col-sm-3 text-right">最近采购<span data-toggle="tooltip" title="" data-original-title="不符所选供应商中包装限制的商品" class="fa fa-question-circle"></span></div>
+                  <div class="col-sm-9">
+                    <label><input type="radio" class="default" checked name="filter_ismidpacking" value="0">全部</label>
+                    <label><input type="radio" name="filter_ismidpacking" value="1"> 不符中包装限制 </label>
+
+                  </div>
+              </div>
+
           </div>
           <div class="modal-footer">
             <button type="button" class="cancel btn btn-default" data-dismiss="modal">清除筛选</button>
@@ -705,7 +719,7 @@
             <li v-for="(item,index) in offlineModalData" :key="index">
               <p class="companyName">{{item.CompanyName}}</p>
               <p class="total" :class="{'online':getIsOffline(item.storeid)}" v-text="getOfflineTotal(item.storeid)"></p>
-              <div @click="offlineSelect(item.storeid)" class="info" :class="{'selected':item.selected}">
+              <div @click="offlineSelect(item.storeid)" class="info" :class="{'selected':item.selected}" data-container="body" data-toggle="popover" data-placement="bottom" :data-content="item.Remarks">
                   <p class="price">{{item.price}}</p>
                   <p class="stock">
                     {{'库存 '+item.stock}}
@@ -759,6 +773,7 @@ export default {
       filter_source: 0, //过滤品种来源 1 导入，2搜索添加
       filter_fixedSupplier:0,  //固定供应商  0 全部  1固定   2不固定
       filter_LastTransaction:0,  //搜索最近采购  0全部   -1最近一天   -3最近3天
+      filter_ismidpacking:0,     //筛选中包装    0全部    1不符合中包装
       VenderName: "", //添加店铺模态框中的搜索店铺输入框绑定
       productList: [],
       CompanyList: [],
@@ -1200,6 +1215,9 @@ export default {
       this.filter_select = 0;
       this.filter_pricetype = 0;
       this.filter_source = 0;
+      this.filter_fixedSupplier = 0,  
+      this.filter_LastTransaction = 0,
+      this.filter_ismidpacking = 0;
       this.showCanBuy = true;
       this.OverStock = false;
       this.PurchaseSpxq = false;
@@ -1314,6 +1332,12 @@ export default {
       this.filter_LastTransaction = filter_LastTransaction;
       if(filter_LastTransaction != 0) count++;
 
+      var filter_ismidpacking = Number(
+        $("#cg_filter input[name='filter_ismidpacking']:checked").val()
+      )
+      this.filter_ismidpacking = filter_ismidpacking;
+      if(filter_ismidpacking != 0) count++;
+
       var $label = $(".box_header .filter_num");
       if (count > 0) {
         $label.text(count);
@@ -1334,7 +1358,8 @@ export default {
             filter_pricetype,
             filter_source,
             filter_fixedSupplier,
-            filter_LastTransaction
+            filter_LastTransaction,
+            ismidpacking:filter_ismidpacking
           }).then(res => {
             if (res.data.success) {
               this.list = res.data;
@@ -1365,6 +1390,7 @@ export default {
       this.filter_source = 0;
       this.filter_fixedSupplier = 0;
       this.filter_LastTransaction = 0;
+      this.filter_ismidpacking = 0;
       //请求数据
       this.showLoading = true;
       this.$http
@@ -1379,7 +1405,8 @@ export default {
           filter_pricetype: 0,
           filter_source: 0,
           filter_fixedSupplier:0,
-          filter_LastTransaction:0
+          filter_LastTransaction:0,
+          ismidpacking:0
         })
         .then(res => {
           if (res.data.success) {
@@ -1577,6 +1604,7 @@ export default {
           filter_source: this.filter_source,
           filter_fixedSupplier: this.filter_fixedSupplier,
           filter_LastTransaction:this.filter_LastTransaction,
+          ismidpacking:this.filter_ismidpacking,
           pageIndex : this.pageIndex,
           pageSize : this.pageSize
         })
@@ -1607,7 +1635,12 @@ export default {
                         sorting: this.sorting,
                         filter_select: this.filter_select,
                         filter_pricetype: this.filter_pricetype,
-                        filter_source: this.filter_source
+                        filter_source: this.filter_source,
+                        filter_fixedSupplier: this.filter_fixedSupplier,
+                        filter_LastTransaction:this.filter_LastTransaction,
+                        ismidpacking:this.filter_ismidpacking,
+                        pageIndex : this.pageIndex,
+                        pageSize : this.pageSize
                       })
                       .then(res => {
                         this.showLoading = false;
@@ -1646,7 +1679,11 @@ export default {
                         sorting: this.sorting,
                         filter_select: this.filter_select,
                         filter_pricetype: this.filter_pricetype,
-                        filter_source: this.filter_source
+                        filter_source: this.filter_source,
+                        filter_LastTransaction:this.filter_LastTransaction,
+                        ismidpacking:this.filter_ismidpacking,
+                        pageIndex : this.pageIndex,
+                        pageSize : this.pageSize
                       })
                       .then(res => {
                         this.showLoading = false;
@@ -3121,6 +3158,7 @@ export default {
     //确定刷新
     goRefresh() {
       $(".refreshConfirm").fadeOut();
+      this.pageIndex = 1;
       this.showLoading = true;
       this.$http
         .post(this.url+"PurchaseEditRefresh", {
@@ -4000,7 +4038,8 @@ export default {
       var index = Number($('.offlineModal .post').data('index')),  //productList 下标
           key   = Number($('.offlineModal .post').data('key')),    //purchasingCompanyList 下标
           prevStoreid = null,
-          prevPrice = 0;
+          prevPrice = 0,
+          remarks = "";
 
       var buyCount = this.productList[index].BuyCount,
           price = 0,
@@ -4019,7 +4058,7 @@ export default {
            selectedStoreid = item.storeid;
            price = item.price;
            companyName =  item.CompanyName;
-           
+           remarks = item.Remarks;
          }
        })
 
@@ -4079,7 +4118,7 @@ export default {
             }
             item.price = price;
             item.CompanyName = companyName;
-            
+            item.Remarks = remarks;
             
             
           }
@@ -4209,6 +4248,15 @@ export default {
       }else {
         return num;
       }
+    },
+    //点击复制ERP编号
+    copyPSN(val){
+      var Input = document.createElement('input');
+      Input.value = val;
+      document.body.appendChild(Input);
+      Input.select();
+      document.execCommand('Copy');
+      document.body.removeChild(Input);
     }
 
 
@@ -4805,6 +4853,17 @@ export default {
                   bottom:0;
                   background-color: rgba(0, 0, 0, 0.1);
                   font-size: 12px;
+              }
+              >.psn{
+                  color:#fff;
+                  background-color: #999;
+                  padding:0 4px;
+                  position: absolute;
+                  left:0;
+                  bottom:0;
+                  background-color: rgba(0, 0, 0, 0.1);
+                  font-size: 12px;
+                  cursor: pointer;
               }
               
             }
