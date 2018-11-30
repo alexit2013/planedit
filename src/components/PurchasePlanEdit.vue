@@ -1,6 +1,5 @@
 <template>
 <div>
-
   <div class="header_bg navbar navbar-static-top">
       <div class="container">
         <!-- Logo -->
@@ -126,13 +125,27 @@
           </p>
         </div>
         <!-- 右侧按钮选择排序 -->
-        <div class="shortcut text-right col-xs-12 col-md-6">
-          <button @click="reset" class="btn btn-info glyphicon glyphicon-refresh">重置</button>
-          <button @click="showCGPH=true" data-toggle="modal" data-target="#cg_preference"  class="btn btn-primary glyphicon glyphicon-cog">采购偏好</button>
-          <button @click="chooseLow" class="btn btn-primary glyphicon glyphicon-check">全选最低价</button>
-          <button @click="addStore" data-toggle="modal"  data-target="#addStore" class="btn btn-primary glyphicon glyphicon-plus">添加匹配店铺</button>
-          <span class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
+        <div class="shortcut text-right col-xs-12 col-md-6 pull-right">
+          <button @click="customBtn" class="btn btn-default fa fa-pencil-square-o" data-toggle="tooltip" :title="'自定义表头 当前已选' + customCheckedCount +'项'">       
+            <span v-show="customCheckedCount>0" class="badge bg-yellow">{{customCheckedCount}}</span>
+            <br/><i>表头</i>
+          </button>
+          <button @click="reset" class="btn btn-default fa fa-refresh" data-toggle="tooltip" title="取消所有人为操作,重置计划为初始状态">
+            <br/><i>重置</i>
+          </button>
+          <button @click="preferenceBtn"  class="btn btn-default fa fa-cog" data-toggle="tooltip" title="设置采购偏好">
+            <br/><i>偏好</i>
+          </button>
+          <button @click="chooseLow" class="btn btn-default fa fa-check-square-o" data-toggle="tooltip" title="全选最低价供应商">
+            <br/><i>最低</i>
+          </button>
+          <button @click="addStore"  class="btn btn-default fa fa-plus" data-toggle="tooltip" title="设置匹配供应商">
+            <span v-if="list && list.data.CompanyCount>0" class="badge">{{list.data.CompanyCount}}</span>
+            <br/><i>供应商</i>
+          </button>
+          <span class="upload btn btn-default fa fa-sign-out" data-toggle="tooltip" title="再次导入采购计划">
             <input @change="upLoad($event)" type="file"/>
+            <br/><i>导入</i>
           </span>
         
         </div>
@@ -193,6 +206,11 @@
               <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'oldChrome':(isChrome && isChrome<56) || isIE}">
                 采购数量
               </th>
+              <!-- 自定义表头 -->
+              <th v-for="(custom,customIndex) in list.data.ExceptionField" :key="customIndex" v-show="custom.show" class="custom">
+                {{custom.customName}}
+              </th>
+              <!-- 自定义表头结束 -->
               <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
                 <a href= "javascript:;" class="dropdown-toggle" data-toggle="dropdown">{{item.CompanyName.slice(0,6)}}</a>
                 <div :class="{'offline':!item.isOnline,'online':item.isOnline}" class="total_price text-center" title="小计">{{'￥'+item.Total.toFixed(2)}}</div>
@@ -272,6 +290,14 @@
                   <i data-toggle="popover" data-placement="bottom" data-content="所选供应商只能按中包装整倍数采购，点击中包装数量可自动修改" class="fa fa-question-circle"></i>
                 </p>
               </td>
+              <!-- 自定义列开始 -->
+              <td v-for="(custom,customIndex) in list.data.ExceptionField" :key="customIndex" v-show="custom.show" class="custom">
+                <div style="height:60px;overflow:hidden;word-break:break-all;">
+                  {{product.ExceptionFieldJsonModel?product.ExceptionFieldJsonModel[custom.customName]:"-"}}
+                </div>
+                
+              </td>
+              <!-- 自定义列结束 -->
               <!-- 药企对应商品 -->
               <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
                 <!-- 有商品 -->
@@ -288,7 +314,7 @@
                   <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
                   <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
                   <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
-                    <p v-if="item.storeid != 0">库存 {{item.stock}} <span v-if="item.Goods_Pcs_Small>1">{{"["+item.Goods_Pcs_Small+"]"}}</span></p>
+                    <p v-if="item.storeid != 0">库存 {{item.stock}} <span v-if="item.Goods_Pcs_Small>1 && item.ismidpacking">{{"["+item.Goods_Pcs_Small+"]"}}</span></p>
                     <p v-else>{{item.CompanyName}}</p>
                     <p v-if="item.storeid != 0">效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
                     <p v-else>{{"共"+item.OfflineSupplierCount+"个报价"}}</p>
@@ -366,7 +392,7 @@
             <h4 class="modal-title" id="myModalLabel">筛选</h4>
           </div>
           <div class="modal-body">
-             <div class="form-group row">
+              <div class="form-group row">
                   <div class="col-sm-3 text-right">选择</div>
                   <div class="col-sm-9">
                     <label><input type="radio" class="default" checked name="filter_select" value="0">全部</label>
@@ -413,6 +439,30 @@
                     <label><input type="radio" name="filter_ismidpacking" value="1"> 不符中包装限制 </label>
 
                   </div>
+              </div>
+              <!-- 自定义字段筛选 -->
+              <div class="customFilter" v-if="list">
+                  <h1 style="border-bottom:1px solid #ddd;font-size:16px;padding-bottom:10px;">自定义字段</h1>
+                  <div class="form-group row" v-for="(item,ind) in list.data.ExceptionField" :key="ind">
+                    <div class="col-sm-2 text-right">{{item.customName}}</div>
+                    <div class="col-sm-2">
+                      <label>
+                        <input class="default" type="radio" :name="item.customName" checked value="0">全部
+                      </label>
+                    </div>
+                    <div class="col-sm-2">
+                      <label>
+                        <input type="radio" :name="item.customName" value="1">不为空
+                      </label>
+                    </div>
+                    <div class="col-sm-6 searchWordsContainer">
+                      <label>
+                        <input type="radio" :name="item.customName" value="2">精准搜索
+                      </label>
+                      <input class="searchWords" style="width:160px;" type="text" disabled>
+                    </div>
+                  </div>
+                  
               </div>
 
           </div>
@@ -739,6 +789,47 @@
         </div>
       </div>
     </div>
+    <!-- 17、自定义表头设置模态框 -->
+    <div  v-if="list && showCustomModal"  class="customModal" >
+      <div class="customBody">
+        <h4 class="title">自定义表头设置
+          <span @click="closeCustom" class="rf shut">&times;</span>
+        </h4>
+        <div class="customContent">
+          <div class="top">
+            <label>
+              <input @click="checkCustomAll($event)" type="checkbox">全部字段 <span class="count">( {{list.data.ExceptionField?list.data.ExceptionField.length+3:3}} )</span>
+            </label>
+            <!-- <p class="pull-right">
+              已选字段 <span class="selectCount"> {{customCheckedCount}} </span>
+            </p> -->
+          </div>
+          <div class="inner">
+            <div v-if="list.data.ExceptionField && list.data.ExceptionField.length>0" class="customTable">
+              <p class="titleLine">自定义字段</p>
+              <div class="customTableContent">
+                <label v-for="(item,key) in list.data.ExceptionField" :key="key"><input :value="item.customName" :checked="item.show" type="checkbox">{{item.customName}}</label>
+              </div>
+            </div>
+            <div class="referTab">
+              <p class="titleLine">参考字段</p>
+              <div class="referTableContent">
+                <label><input type="checkbox"  :checked="showStock">库存信息: 库存</label>
+                <label><input type="checkbox"  :checked="showMonthlySales">库存信息: 月销量</label>
+                <label><input type="checkbox"  :checked="showPrice">库存信息: 参考价</label>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+        <div class="customFooter">
+          <button @click="closeCustom" class="shut btn btn-default">取消</button>
+          <button @click="confirmCustom" class="post btn btn-primary">保存设置</button>
+        </div>
+      </div>
+    </div>
+
   
 </div>
 </template>
@@ -793,6 +884,8 @@ export default {
       offlineModalData:[],             //点击线下汇总弹出显示数据
       pageIndex:1,
       pageSize:100,
+      customCheckedCount:0,      //自定义表头已选数量
+      showCustomModal:false      //是否显示自定义模态框
 
     };
   },
@@ -1337,6 +1430,26 @@ export default {
       this.filter_ismidpacking = filter_ismidpacking;
       if(filter_ismidpacking != 0) count++;
 
+      // 自定义字段
+      var Customobj = {};
+      $('#cg_filter .customFilter input:radio:checked').each(function (i,ele) {
+        var $customRadio = $(ele);
+        var val = $customRadio.val();
+        var key = $customRadio.attr('name');
+        var searchWords = $customRadio.parents('.form-group').find('.searchWords').val();
+        if( val =='0' ){
+
+        }else if(val == '1'){
+          Customobj[key] = '';
+          count++;
+        }else if(val == '2'){
+          Customobj[key] = searchWords;
+          count++;
+        }
+      })
+
+      
+
       var $label = $(".box_header .filter_num");
       if (count > 0) {
         $label.text(count);
@@ -1358,7 +1471,9 @@ export default {
             filter_source,
             filter_fixedSupplier,
             filter_LastTransaction,
-            ismidpacking:filter_ismidpacking
+            ismidpacking:filter_ismidpacking,
+            filter_ExceptionField:JSON.stringify(Customobj)
+
           }).then(res => {
             if (res.data.success) {
               this.list = res.data;
@@ -1390,6 +1505,12 @@ export default {
       this.filter_fixedSupplier = 0;
       this.filter_LastTransaction = 0;
       this.filter_ismidpacking = 0;
+
+      //自定义字段输入框禁用
+      $('#cg_filter .customFilter .searchWords').each(function(i,ele){
+        $(ele).val('').prop('disabled',true);
+      })
+
       //请求数据
       this.showLoading = true;
       this.$http
@@ -1424,6 +1545,25 @@ export default {
           this.showLoading = false;
         });
     });
+
+    //3.删选模态框自定义字段radio切换
+    $('#cg_filter').on('change',".customFilter input[type='radio']",function(e){
+      var $customRadio = $(e.target);
+      if($customRadio.val() == '2'){
+        // $customRadio.parent().next().prop('disabled',false);
+        $customRadio.parents('.form-group').find('.searchWords').prop('disabled',false);
+      }else{
+        $customRadio.parents('.form-group').find('.searchWords').prop('disabled',true).val('');
+      }
+    })
+
+    //4.自定义字段点击精准搜索的输入框 , 精准搜索的radio选中
+    $('#cg_filter').on('click','.customFilter .searchWordsContainer',function(){
+      var $this = $(this);
+       $this.find(':radio').prop('checked',true);
+      $this.children(':text').prop('disabled',false);
+    })
+
 
     //页面滚动时让fixed_top固定在顶部
     var $fixed_top = $(".fixed_top");
@@ -1463,6 +1603,11 @@ export default {
     });
     
     window.onbeforeunload=()=>{
+      if(this.list.data.ExceptionField){
+        for(var item of this.list.data.ExceptionField){
+          localStorage[this.id + item.customName] = item.show;
+        }
+      }
       if( !this.OverStock && !this.PurchaseSpxq && !this.PriceChange){  
         localStorage[ this.id] = $(window).scrollTop();
         localStorage[this.id+'sorting'] = this.sorting;
@@ -1535,7 +1680,7 @@ export default {
   },
   beforeUpdate(){
     $("[data-toggle='tooltip']").tooltip('destroy');
-    // $("[data-toggle='popover']").popover('destroy');
+    $("[data-toggle='popover']").popover('destroy');
     $("input[name='exception']").unbind();
   },
   updated() { 
@@ -2004,7 +2149,8 @@ export default {
       if (!this.productList[ind].sellerJson1[key].canSelect) return;
       //如果未勾选
       if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].storeid != 0) {
-        this.productList[ind].Goods_Pcs_Small = this.productList[ind].sellerJson1[key].Goods_Pcs_Small;  //改变中包装倍数
+        // this.productList[ind].Goods_Pcs_Small = this.productList[ind].sellerJson1[key].Goods_Pcs_Small;  //改变中包装倍数
+        this.productList[ind].Goods_Pcs_Small = this.productList[ind].sellerJson1[key].ismidpacking ? this.productList[ind].sellerJson1[key].Goods_Pcs_Small : 1;  //改变中包装倍数
         var bargain = 0;
         var hasSelect = 0;
         var preSelectIndex = null;
@@ -2104,7 +2250,13 @@ export default {
           //减去之前商品的节省金额
           if(this.productList[ind].HistoryPrice > 0 && (this.productList[ind].HistoryPrice >=  this.productList[ind].sellerJson1[preSelectIndex].price*2 ||  this.productList[ind].sellerJson1[preSelectIndex].price >= this.productList[ind].HistoryPrice*2)){
               //之前选中也是wrongPrice价格
+            
+            var nowSave = this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price));
+            this.list.data.SelectSavePriceAll +=nowSave;
+            this.list.data.SelectPriceAll += this.productList[ind].BuyCount * (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
+
           }else if(this.productList[ind].HistoryPrice > 0 && !this.productList[ind].wrongPrice){
+
             var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - (this.productList[ind].sellerJson1[preSelectIndex].bargain || this.productList[ind].sellerJson1[preSelectIndex].price));
             // console.log("presave"+preSave);
             this.list.data.SelectSavePriceAll -=preSave;
@@ -3242,7 +3394,11 @@ export default {
     },
     //添加店铺匹配
     addStore() {
+      
       this.pageIndex = 1;
+
+      $('#addStore').modal('show');
+
       var params = new URLSearchParams();
       this.$http
         .post(this.url+"VendorAddSelectAllList",params)
@@ -4038,6 +4194,7 @@ export default {
           key   = Number($('.offlineModal .post').data('key')),    //purchasingCompanyList 下标
           prevStoreid = null,
           prevPrice = 0,
+          bargain = 0,
           remarks = "";
 
       var buyCount = this.productList[index].BuyCount,
@@ -4057,7 +4214,9 @@ export default {
            selectedStoreid = item.storeid;
            price = item.price;
            companyName =  item.CompanyName;
+           bargain = item.bargain;
            remarks = item.Remarks;
+
          }
        })
 
@@ -4089,10 +4248,20 @@ export default {
               this.list.data.CountSpxq++;
             }
 
-            //计算节省金额
-            //  var preSave= buyCount*(this.productList[index].HistoryPrice - (item.bargain || item.price));
-            // this.list.data.SelectSavePriceAll -=preSave;
-            // this.list.data.SelectPriceAll -= buyCount * (item.bargain || item.price);
+            // 计算节省金额 (减去之前的节约金额)
+            if(this.productList[index].HistoryPrice>0 && !this.productList[index].wrongPrice){
+              var preSave= buyCount*(this.productList[index].HistoryPrice - (item.bargain || item.price));
+              this.list.data.SelectSavePriceAll -=preSave;
+              this.list.data.SelectPriceAll -= buyCount * (item.bargain || item.price);
+            }
+
+            //异常价格
+           if(price >= this.productList[index].HistoryPrice * 2 || this.productList[index].HistoryPrice >= price*2){
+             this.productList[index].wrongPrice = true;
+           }else{
+             this.productList[index].wrongPrice = false;
+           }
+             
             
 
             this.list.data.purchasingCompanyList[i].Total -= (item.price * buyCount);
@@ -4128,6 +4297,15 @@ export default {
         if(this.productList[index].outTop1){
           this.list.data.CountPurchaseSock--;
           this.productList[index].outTop1 = false;
+        }
+
+        //加上现在的节约金额
+        if(this.productList[index].HistoryPrice>0 && !this.productList[index].wrongPrice){
+            console.log('加上现在的节约金额');
+            var nowSave = this.productList[ind].BuyCount*(this.productList[index].HistoryPrice - (bargain || price));
+            this.list.data.SelectSavePriceAll +=nowSave;
+            this.list.data.SelectPriceAll += this.productList[index].BuyCount * (bargain||price);
+
         }
 
         //向服务器发送数据选中的商品
@@ -4262,6 +4440,57 @@ export default {
       Input.select();
       document.execCommand('Copy');
       document.body.removeChild(Input);
+      this.myToast('ERP编号复制成功!');
+    },
+    preferenceBtn(){
+      this.showCGPH=true;
+      $('#cg_preference').modal('show');
+    },
+    //关闭自定义表头
+    closeCustom(){
+      this.showCustomModal = false;
+    },
+    //自定义按钮
+    customBtn(){
+      this.showCustomModal = true;
+    },
+    //自定义表头设置模态框中选择去全部字段
+    checkCustomAll(e){
+      // var hasChecked = 0;
+      $('.customModal .inner input').each((i,ele)=>{
+        if(e.target.checked){
+          $(ele).prop('checked',true);
+          // hasChecked++;
+        }else{
+          $(ele).prop('checked',false);
+        } 
+      })
+      // this.customCheckedCount = hasChecked;
+
+    },
+    //自定义表头模态框确定
+    confirmCustom(){
+      //自定义字段
+      $('.customModal .inner .customTable input').each((i,ele)=>{
+        var $input = $(ele);
+        this.list.data.ExceptionField[i].show  = localStorage[this.id + $input.val()] = $input.prop('checked');
+      })
+
+      //参考字段
+      localStorage[ this.id + 'showStock'] = this.showStock =  Number($('.customModal .inner .referTableContent input:eq(0)').prop('checked'));
+      localStorage[ this.id + 'showMonthlySales'] = this.showMonthlySales =  Number($('.customModal .inner .referTableContent input:eq(1)').prop('checked'));
+      localStorage[ this.id + 'showPrice'] = this.showPrice = Number($('.customModal .inner .referTableContent input:eq(2)').prop('checked'));
+
+      var hasChecked = 0;
+      $('.customModal .inner input').each((i,ele)=>{
+        if( $(ele).prop('checked') ){
+          hasChecked++;
+        }
+      })
+      this.customCheckedCount = hasChecked;
+
+      this.showCustomModal = false;
+
     }
 
 
@@ -4270,6 +4499,36 @@ export default {
     //仅显示可采checkbox切换
     list(nVal) {
       this.productList = nVal.data.productList;
+
+      //修改自定义表头数据
+      this.customCheckedCount = 0;
+      if(nVal.data.ExceptionField){
+        var arr = nVal.data.ExceptionField.slice(0);
+        nVal.data.ExceptionField = [];
+        for(var customItem of arr){
+          var obj = {};
+          obj.customName =customItem;
+          obj.show = true;      //默认显示,如果H5本地存储中保存有值,则替换为本地值
+          // localStorage[this.id+customItem] == undefined ? '' : ( localStorage[this.id+customItem]==='true'? obj.show=true: obj.show=false );
+          
+          if(localStorage[this.id+customItem] == undefined){
+            localStorage[this.id+customItem] = true;
+          }
+          if(localStorage[this.id+customItem] != undefined){
+
+            if(localStorage[this.id+customItem]==='true'){
+              obj.show=true;
+              this.customCheckedCount++;
+            }else if(localStorage[this.id+customItem]==='false'){
+              obj.show=false;
+            }
+
+          }
+
+          nVal.data.ExceptionField.push(obj);
+        }
+      }
+      
       //最大值和最小值
       this.productList.forEach((ele,index)=>{
         ele.maxPrice=(Math.max.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
@@ -4285,6 +4544,23 @@ export default {
         }
 
       })
+
+      //读取本地是否显示库存信息
+      if(localStorage[ this.id + 'showStock'] != undefined){
+        this.showStock = Number(localStorage[ this.id + 'showStock']);
+      }
+      if(localStorage[ this.id + 'showMonthlySales'] != undefined){
+        this.showMonthlySales = Number(localStorage[ this.id + 'showMonthlySales']);
+      }
+      if(localStorage[ this.id + 'showPrice'] != undefined){
+        this.showPrice = Number(localStorage[ this.id + 'showPrice']);
+      }
+
+      this.showStock>0?this.customCheckedCount++:'';
+      this.showMonthlySales>0?this.customCheckedCount++:'';
+      this.showPrice>0?this.customCheckedCount++:'';
+
+
       //重新计算productList,使其sellerJson1数组长度等于商家个数
       var time = new Date();
       time.setFullYear(time.getFullYear() + 1);
@@ -4331,7 +4607,7 @@ export default {
               output[i].prevSelected = output[i].selected ? true : false;
               output[i].ismidpacking = this.list.data.purchasingCompanyList[i].ismidpacking;
               if(output[i].selected){
-                ele.Goods_Pcs_Small = output[i].Goods_Pcs_Small;
+                ele.Goods_Pcs_Small =output[i].ismidpacking ? output[i].Goods_Pcs_Small : 1;
               }
               if (!ele.isSelect) output[i].selected = false; //如果商品列的checkbox未选中,那么对应企业的药品也不能选中
               //库存为0标识线下商品
@@ -4422,6 +4698,8 @@ export default {
         return item.storeid>0;
       })
     },
+    //自定义表头模态框已选字段数量
+
 
   }
 };
@@ -4551,6 +4829,19 @@ export default {
         }
       }
       > .shortcut {
+        i{
+          font-style: normal;
+          font-size: 12px;
+        }
+        >.fa-pencil-square-o{
+          position:relative;
+          >span{
+            position: absolute;
+            top:-10px;
+            right:-4px;
+            background-color: #f39c12 !important;
+          }
+        }
         > .upload {
           position: relative;
           > input[type="file"] {
@@ -4568,6 +4859,15 @@ export default {
         >.pageTurn{
           height:60px;
           padding:10px;
+        }
+        >.fa-plus{
+           position:relative;
+          >span{
+            position: absolute;
+            top:-10px;
+            right:-4px;
+            background-color: #00C1F4 !important;
+          }
         }
       }
     }
@@ -4738,6 +5038,9 @@ export default {
             border-left-color: transparent;
             border-bottom-color: transparent;
           }
+        }
+        th.custom{
+          width:92px;
         }
       }
       > .product_container {
@@ -4942,6 +5245,9 @@ export default {
               // &:hover .open{
               //   display: block;
               // }
+            }
+            &.custom{
+              width:92px;
             }
             &.td_supplier {
               position: relative;
@@ -5433,6 +5739,66 @@ export default {
         border-bottom:4px dashed;
         border-top:none !important;
       }
+    }
+  }
+}
+.customModal {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  > .customBody {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    width: 650px;
+    height: 366px;
+    background-color: #fff;
+    border-radius: 10px;
+    > .title {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid #ddd;
+      > .rf {
+        cursor: pointer;
+      }
+    }
+    > .customContent {
+      overflow-y: auto;
+      height:256px;
+      padding:14px;
+      border-bottom:1px solid #ddd;
+      >.inner{
+        height:200px;
+        border:1px solid #ddd;
+        padding:14px;
+        label{
+          margin-right:20px;
+          font-weight: normal;
+        }
+        .titleLine{
+          border-bottom:1px solid #ddd;
+          color:#999;
+        }
+        >.customTable{
+          margin-bottom:16px;
+        }
+
+
+      }
+
+    }
+    > .customFooter {
+      padding: 0 15px;
+      text-align: right;
+      height: 60px;
+      line-height: 60px;
     }
   }
 }
