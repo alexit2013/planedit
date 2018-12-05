@@ -1,7 +1,6 @@
 <template>
 <div>
-
-    <div class="header_bg navbar navbar-static-top">
+  <div class="header_bg navbar navbar-static-top">
       <div class="container">
         <!-- Logo -->
         <div class="navbar-header">
@@ -42,302 +41,329 @@
    
       </div>
     </div>
-    <div class="content container">
-      <!-- 面包屑导航 -->
-      <div class="row bread">
-        <p class="lf title">采购计划详情</p>
-        <ul class="breadcrumb rf">
-          <li>
-            <i class="fa fa-home"></i>
-            <a href="javascript:;">首页</a>
-          </li>
-          <li>
-            <a href="javascript:;">采购计划</a>
-          </li>
-          <li>
-            <a href="javascript:;">采购计划详情</a>
-          </li>
-        </ul>
-      </div>
-      <!-- 搜索 -->
-      <div class="search form-inline">
-          <div class="form-group " >
-            <label for="goods">商品</label>
-            <input v-model.trim="productName" @keyup.enter="planSearch" type="text" class="form-control" id="goods" placeholder="通用名、商品名、ERP编号">
-          </div>
-          <div class="form-group">
-            <label for="factory">厂家</label>
-            <input v-model.trim="factoryName" @keyup.enter="planSearch" type="email" class="form-control" id="factory" placeholder="生产厂家">
-          </div>
-          <button type="button" @click="planSearch" class="btn btn-default"><i class="fa fa-search"></i>计划内</button>
-      </div>
-      <!-- 采购内容 -->
-      <div class="box">
-        <!-- 采购内容头部筛选/排序... -->
-        <div class="box_header row">
-          <!-- 左侧勾选排序 -->
-          <div class="check col-xs-12 col-md-6" v-if="list">
-            <p>
-              <input id="checkscb" type="checkbox"  @change="changeShowCanBuy($event)" v-model="showCanBuy"><label for="checkscb">仅显示可采</label><span>{{list.data.CountPurchase}}</span>
-            </p>
-            <p>
-              <input id="checkckc" type="checkbox"  @change="changeOverStock($event)" v-model="OverStock" ><label for="checkckc">采购超库存</label><span>{{list.data.CountPurchaseSock}}</span>
-            </p>
-            <p>
-              <input id="checkjxq" type="checkbox"  @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq"><label for="checkjxq">近效期(1年以内)</label><span>{{list.data.CountSpxq}}</span>
-            </p>
-            <p>
-              <input id="checkjg" type="checkbox"  @change="changePriceChange($event)"  v-model="PriceChange"><label for="checkjg">价格变动</label><span>{{list.data.CountPriceChange}}</span>
-            </p>
-            <p>
-              <button class="btn btn-default" data-toggle="modal" data-target="#cg_filter">
-                <i class="fa fa-filter"></i>
-                筛选
-                <span class="filter_num label label-danger"></span>
-              </button>
-            </p>
-            <p class="dropdown">
-              <button class="btn btn-default" data-toggle="dropdown">
-                <i class="fa fa-sort"></i>
-                排序
-              </button>
-              <ul class="sort dropdown-menu">
-                <li :class="{'active':sorting==0}" @click="defaultSort($event)">
-                  <a href="javascript:;">默认排序</a>
-                </li>
-                <li :class="{'active':sorting==1 || sorting==2}" data-num='1' @click="zjSort($event)">
-                  <a href="javascript:;">按参考价同供应价 <b>总价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==1,'fa fa-sort-down':sorting==2}"></i></a>
-                </li>
-                <li :class="{'active':sorting==3 || sorting==4}" data-num='1' @click="djSort($event)">
-                  <a href="javascript:;">按参考价同供应价 <b>单价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==3,'fa fa-sort-down':sorting==4}"></i></a>
-                </li>
-                <li :class="{'active':sorting==5 || sorting==6}" data-num='1' @click="countSort($event)">
-                  <a href="javascript:;">按采购数量排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==5,'fa fa-sort-down':sorting==6}"></i></a>
-                </li>
-              </ul>
-            </p>
-          </div>
-          <!-- 右侧按钮选择排序 -->
-          <div class="shortcut text-right col-xs-12 col-md-6">
-            <button @click="showCGPH=true" data-toggle="modal" data-target="#cg_preference"  class="btn btn-primary glyphicon glyphicon-cog">采购偏好</button>
-            <!-- <button disabled @click="chooseLow" class="btn btn-primary glyphicon glyphicon-check">全选最低价</button>
-            <button disabled @click="addStore" data-toggle="modal"  data-target="#addStore" class="btn btn-primary glyphicon glyphicon-plus">添加匹配店铺</button>
-            <span disabled class="upload btn btn-primary glyphicon glyphicon-plus">导入计划
-              <input disabled  type="file"/>
-            </span> -->
-          </div>
-          
-          <div class="pageTurn text-right col-xs-12" v-if="list">
-             <p style="display:inline-block;vertical-align:top;">
-               显示方式:
-                <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
-                  <option value="0" :selected="list.data.IsPage==false">不分页</option>
-                  <option value="1" :selected="list.data.IsPage">分页</option>
-                </select>
-             </p>
-              <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
-                当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
-                <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
-                  <option value="20" >20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                  <option value="200">200</option>
-                </select>条
-                <ul style="margin:0;vertical-align:bottom;" class="pagination">
-                  <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
-                    <a href="javascript:;">
-                      <span>&laquo;</span>
-                    </a>
-                  </li>
-                  <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
-                  <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
-                    <a href="javascript:;">
-                      <span>&raquo;</span>
-                    </a>
-                  </li>
-               </ul>
-              </p>
-              
-            </div>
-
+  <div class="content container">
+    <!-- 面包屑导航 -->
+    <div class="row bread">
+      <p class="lf title">采购计划复核</p>
+      <ul class="breadcrumb rf">
+        <li>
+          <i class="fa fa-home"></i>
+          <a href="javascript:;">首页</a>
+        </li>
+        <li>
+          <a href="javascript:;">采购计划</a>
+        </li>
+        <li>
+          <a href="javascript:;">采购计划复核</a>
+        </li>
+      </ul>
+    </div>
+    <!-- 搜索 -->
+    <div class="search form-inline">
+        <div class="form-group " >
+          <label for="goods">商品</label>
+          <input v-model.trim="productName" @keyup.enter="planSearch" type="text" class="form-control" id="goods" placeholder="通用名、商品名、ERP编号">
         </div>
-        <!-- 采购详情表格 -->
-        <div id="scrollArea" class="detail">
-          <!-- 采购详情头部/滚动时固定在顶部 -->
-          <div class="container fixed_top">
-          <table  class=" table table-bordered" v-if="list">
-            <thead>
-              <tr>
-                <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE}">
-                  <input disabled type="checkbox"  class="checkall" :class="{'oldChrome':(isChrome && isChrome<56) || isIE}" vale="all" v-model="checkall" >
-                </th>
-                <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE,'fixWidth':list.data.purchasingCompanyList.length>6}">商品</th>
-                <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales+showPrice==1,'two':showStock+showMonthlySales+showPrice==2,'oldChrome':(isChrome && isChrome<56) || isIE}">
-                  库存信息
-                  <ul class="clear">
-                    <li class="lf" v-if="showStock">库存</li>
-                    <li class="lf" v-if="showMonthlySales">月销</li>
-                    <li class="lf" v-if="showPrice">参考价</li>
-                  </ul>
-                </th>
-                <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'oldChrome':(isChrome && isChrome<56) || isIE}">
-                  采购数量
-                </th>
-                <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
-                  <a href= "javascript:;" class="dropdown-toggle" data-toggle="dropdown">{{item.CompanyName.slice(0,6)}}</a>
-                  <div :class="{'offline':!item.isOnline,'online':item.isOnline}" class="total_price text-center" title="小计">{{'￥'+item.Total.toFixed(2)}}</div>
-                  <div class="dropdown-menu">
-                    <h5>{{item.CompanyName}}</h5>
-                    <span class="sign" v-if="item.isOnline">线上</span>
-                    <span class="sign_offlilne" v-else>线下</span>
-                    <!-- <label>最低价/匹配/总商品</label>
-                    <p style="text-align:left">{{item.minPriceCount+'/'+item.MatchingCount+'/'+item.Count}}</p> -->
-                    <button disabled class="btn btn-block btn-default" style="margin-bottom:6px;"  @click="prioritySort(item.storeid)">匹配商品优先排序</button>
-                    <a href="javascript:;">
-                      <button disabled  v-if="item.Enabled" class="btn btn-block btn-danger">取消匹配</button>
-                      <button disabled  v-else class="btn btn-block btn-danger">启用匹配</button>
-                    </a>
-                  </div>
-                  <span v-if="list.data.PreferredSupplier == item.storeid" data-toggle="tooltip" data-placement="top" title="主供应商" ></span>
-                </th>
-              </tr>
-            </thead>
-          </table>
-          </div>
-          <!-- 采购详情内容 -->
-          <table class="product_container table table-bordered">
-            <tbody id="contentArea" v-if="productList.length>0">
-              <tr v-for="(product,ind) in productList" :key="ind" @click="trChangeIndex(ind)" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE,'nowTrIndex':nowTrIndex == ind}">
-                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
-                  <input disabled type="checkbox"  v-model="product.isSelect">
-                  <p v-text="list.data.IsPage?(ind+1)+(list.data.PageIndex-1)*list.data.PageSize:ind+1"></p>
-                </td>
-                <!-- 商品名称列 -->
-                <td @click="startDown(ind)" :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind,'fixWidth':list.data.purchasingCompanyList.length>6}" class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
-                  <span v-show="nowTrIndex==ind" class="nowTrIndex"></span>
-                  <b>{{product.DrugsBase_DrugName}}</b>
-                  <span class="label label-info" v-if="product.BranchesCount>0">多门店</span>
-                  <span  class='label label-warning' v-if="product.Goods_ID==0">未关联</span>
-                  <span class="label label-info" v-if="product.fixedSupplier" data-toggle="tooltip" data-placement="left" title="该商品指定有固定供应商">固定</span>
-                  <span class="label label-success" v-if="product.source==1" data-toggle="tooltip" data-placement="left" title="搜索添加商品">
-                    <i class="fa fa-search-plus"></i>
-                  </span>
-                  <i class="marks" v-if="product.marks!=''"></i>
-                  <p><span>{{product.DrugsBase_Specification}}</span> - {{product.DrugsBase_Manufacturer}}</p>
-                  <p v-show="product.Recent_supplier"> 最近采购：{{product.Recent_supplier}} </p>
-                  <span class="lastTransaction" v-if="product.LastTransaction" v-text="(new Date(product.LastTransaction)).toLocaleDateString()" data-toggle="tooltip" data-original-title="最近优E+采购时间"></span>
-                  
-                </td>
-                <!-- 库存 -->
-                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}"  v-show="showStock">{{product.Stock}}</td>
-                <!-- 月销 -->
-                <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}" v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
-                <!-- 参考价 -->
-                <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{'high':product.Price-product.HistoryPrice<=0 || product.HistoryPrice ==0,'low':product.Price-product.HistoryPrice>0,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
-                  <span>{{product.HistoryPrice}}</span>
-                  <p class="price_diff" v-if="product.HistoryPrice>0">
-                    <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
-                    <span>{{Math.abs((product.Price-product.HistoryPrice).toFixed(2))}}</span>
-                  </p>
-                  <p v-else>0</p>
-                </td>
-                <!-- 采购数量 -->
-                <td  @mouseleave="mouseOff(ind)" :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
-                  <input disabled type="text" v-show="!product.openMultiple" :readonly="product.BranchesCount>0" class="form-control"  :class="{'out_top':product.outTop1}" v-model.number.lazy="product.BuyCount">
-                  <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
-                    <span v-html="multipleCount(ind)"></span>
-                      /
-                    <span>{{product.BuyCount}}</span>
-                  </p>
-                  <button disabled  v-show="product.canMultiple && !product.openMultiple && product.mouseOn && product.outTop1 &&product.isSelect" class="open btn btn-primary btn-xs">供应商多选</button>
-                  <button disabled  @mouseleave="showOpen($event)" @click="closeMultiple(ind,$event)" v-show="product.canMultiple && product.openMultiple" class="opened btn btn-primary btn-xs">多选</button>
-                  <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;bottom:34px;" class="fa fa-exclamation-circle"></i>
-                </td>
-                <!-- 药企对应商品 -->
-                <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
-                  <!-- 有商品 -->
-                  <div v-if="item"  @mouseenter="showPopOver(product,item,$event)" @mouseleave="closePopOver($event)" >
-                    <b v-if="item.Remarks"></b>
-                    <i class="icon" v-show="(!product.openMultiple&&item.selected&&product.isSelect) || (item.buyCount>0 && product.openMultiple&&product.isSelect)">
-                      <span class="fa fa-check"></span>
-                    </i>
-                    <p v-if="item.bargain>0">
-                      <span class="label label-warning">议</span>
-                      {{item.bargain}}
-                    </p>
-                    <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
-                    <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
-                    <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
-                      <p>库存 {{item.stock}}</p>
-                      <p>效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
-                    </div>
-                    <div v-show="product.openMultiple && item.buyCount>0 &&product.isSelect">
-                      <input disabled style="margin-left:4px;"   type="text" class="form-control" :value="item.buyCount"   :class="{'out_top':item.buyCount>item.stock}">
-                    </div>
-                  </div>
-                  <!-- 无商品 -->
-                  <div v-else>
-                    -
-                  </div>
-                  <!-- popover -->
-                  <p style="display:none;">较主供应商价格 + 10%</p>
-                  <!-- 主供应商 较最低价  百分比   -->
-                  <span v-if="!product.openMultiple && item && item.price > product.minPrice && item.storeid == list.data.PreferredSupplier">{{'+'+((item.price-product.minPrice)/product.minPrice*100).toFixed(2)+'%'}}</span>
-                </td>
-              
-              </tr>
-            </tbody>
-          </table>
+        <div class="form-group">
+          <label for="factory">厂家</label>
+          <input v-model.trim="factoryName" @keyup.enter="planSearch" type="email" class="form-control" id="factory" placeholder="生产厂家">
+        </div>
+        <button type="button" @click="planSearch" class="btn btn-default"><i class="fa fa-search"></i>计划内</button>
+        <!-- <button type="button" @click="qjSearch" class="btn btn-primary" data-toggle="modal" data-target="#qjSearch">
+          <i class="fa fa-search-plus"></i>全局
+        </button> -->
+        <span v-if="list && list.data.Insert_fld_n>0" class="pull-right" style="height:34px;line-height:34px;">
+          <i class="fa fa-exclamation-circle" style="color:#CC0000"></i>
+          本次计划共有{{list.data.Insert_fld_n}}条商品导入失败,
+          <a :href="'/B30Purchase/ExportNoImportPlan?purchase_id='+id" download>点击下载</a>
+        </span>
+    </div>
+    <!-- 采购内容 -->
+    <div class="box">
+      <!-- 采购内容头部筛选/排序... -->
+      <div class="box_header row">
+        <!-- 左侧勾选排序 -->
+        <div class="check col-xs-12 col-md-6" v-if="list">
+          <p>
+            <input id="checkscb" type="checkbox" @change="changeShowCanBuy($event)" v-model="showCanBuy"><label for="checkscb">仅显示可采</label><span>{{list.data.CountPurchase}}</span>
+          </p>
+          <p>
+            <input id="checkckc" type="checkbox" @change="changeOverStock($event)" v-model="OverStock" ><label for="checkckc">采购超库存</label><span>{{list.data.CountPurchaseSock}}</span>
+          </p>
+          <p>
+            <input id="checkjxq" type="checkbox" @change="changePurchaseSpxq($event)" v-model="PurchaseSpxq"><label for="checkjxq">近效期(1年以内)</label><span>{{list.data.CountSpxq}}</span>
+          </p>
+          <p>
+            <input id="checkjg" type="checkbox" @change="changePriceChange($event)"  v-model="PriceChange"><label for="checkjg">价格变动</label><span>{{list.data.CountPriceChange}}</span>
+          </p>
+          <p>
+            <button class="btn btn-default" data-toggle="modal" data-target="#cg_filter">
+              <i class="fa fa-filter"></i>
+              筛选
+              <span class="filter_num label label-danger"></span>
+            </button>
+          </p>
+          <p class="dropdown">
+            <button class="btn btn-default" data-toggle="dropdown">
+              <i class="fa fa-sort"></i>
+              排序
+            </button>
+            <ul class="sort dropdown-menu">
+              <li :class="{'active':sorting==0}" @click="defaultSort($event)">
+                <a href="javascript:;">默认排序</a>
+              </li>
+              <li :class="{'active':sorting==1 || sorting==2}" data-num='1' @click="zjSort($event)">
+                <a href="javascript:;">按参考价同供应价 <b>总价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==1,'fa fa-sort-down':sorting==2}"></i></a>
+              </li>
+              <li :class="{'active':sorting==3 || sorting==4}" data-num='1' @click="djSort($event)">
+                <a href="javascript:;">按参考价同供应价 <b>单价</b> 差额排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==3,'fa fa-sort-down':sorting==4}"></i></a>
+              </li>
+              <li :class="{'active':sorting==5 || sorting==6}" data-num='1' @click="countSort($event)">
+                <a href="javascript:;">按采购数量排序<i style="margin-left:6px;" :class="{'fa fa-sort-up':sorting==5,'fa fa-sort-down':sorting==6}"></i></a>
+              </li>
+            </ul>
+          </p>
+        </div>
+        <!-- 右侧按钮选择排序 -->
+        <div class="shortcut text-right col-xs-12 col-md-6 pull-right">
+          <button @click="preferenceBtn"  class="btn btn-default fa fa-cog" data-toggle="tooltip" title="设置采购偏好">
+            <br/><i>偏好</i>
+          </button>
         </div>
 
         <div class="pageTurn text-right col-xs-12" v-if="list">
           <p style="display:inline-block;vertical-align:top;">
             显示方式:
-            <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
-              <option value="0" :selected="list.data.IsPage==false">不分页</option>
-              <option value="1" :selected="list.data.IsPage">分页</option>
-            </select>
+              <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
+                <option value="0" :selected="list.data.IsPage==false">不分页</option>
+                <option value="1" :selected="list.data.IsPage">分页</option>
+              </select>
           </p>
-          <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
-            当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
-            <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
-              <option value="20" >20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="200">200</option>
-            </select>条
-            <ul style="margin:0;vertical-align:bottom;" class="pagination">
-              <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
-                <a href="javascript:;">
-                  <span>&laquo;</span>
-                </a>
-              </li>
-              <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
-              <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
-                <a href="javascript:;">
-                  <span>&raquo;</span>
-                </a>
-              </li>
+            <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
+              当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
+              <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
+                <option value="20" >20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>条
+              <ul style="margin:0;vertical-align:bottom;" class="pagination">
+                <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
+                  <a href="javascript:;">
+                    <span>&laquo;</span>
+                  </a>
+                </li>
+                <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
+                <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
+                  <a href="javascript:;">
+                    <span>&raquo;</span>
+                  </a>
+                </li>
             </ul>
-          </p>
-          
-        </div>
+            </p>
+            
+          </div>
 
       </div>
-
+      <!-- 采购详情表格 -->
+      <div class="detail">
+        <!-- 采购详情头部/滚动时固定在顶部 -->
+        <div class="container fixed_top">
+        <table class=" table table-bordered" v-if="list">
+          <thead>
+            <tr>
+              <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE}">
+                <input type="checkbox" disabled class="checkall" :class="{'oldChrome':(isChrome && isChrome<56) || isIE}" vale="all" v-model="checkall" >
+              </th>
+              <th :class="{'oldChrome':(isChrome && isChrome<56) || isIE,'fixWidth':list.data.purchasingCompanyList.length>6}">商品</th>
+              <th v-show="showPrice+showMonthlySales+showStock" :class="{'one':showStock+showMonthlySales+showPrice==1,'two':showStock+showMonthlySales+showPrice==2,'oldChrome':(isChrome && isChrome<56) || isIE}">
+                库存信息
+                <ul class="clear">
+                  <li class="lf" v-if="showStock">库存</li>
+                  <li class="lf" v-if="showMonthlySales">月销</li>
+                  <li class="lf" v-if="showPrice">参考价</li>
+                </ul>
+              </th>
+              <th :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'oldChrome':(isChrome && isChrome<56) || isIE}">
+                采购数量
+              </th>
+              <!-- 自定义表头 -->
+              <th v-for="(custom,customIndex) in list.data.ExceptionField" :key="customIndex" v-show="custom.show" class="custom">
+                {{custom.customName}}
+              </th>
+              <!-- 自定义表头结束 -->
+              <th class="dropdown td_supplier" v-for="(item,index) in list.data.purchasingCompanyList" :key="index">
+                <a href= "javascript:;" class="dropdown-toggle" data-toggle="dropdown">{{item.CompanyName.slice(0,6)}}</a>
+                <div :class="{'offline':!item.isOnline,'online':item.isOnline}" class="total_price text-center" title="小计">{{'￥'+item.Total.toFixed(2)}}</div>
+                <div class="dropdown-menu">
+                  <h5>{{item.CompanyName}}</h5>
+                  <span class="sign" v-if="item.isOnline">线上</span>
+                  <span class="sign_offlilne" v-else>线下</span>
+                  <!-- <label>最低价/匹配/总商品</label>
+                  <p style="text-align:left">{{item.minPriceCount+'/'+item.MatchingCount+'/'+item.Count}}</p> -->
+                  <button v-if="item.storeid!=0" class="btn btn-block btn-default" style="margin-bottom:6px;" disabled >匹配商品优先排序</button>
+                  <a v-if="item.storeid!=0" href="javascript:;">
+                    <button  v-if="item.Enabled" disabled class="btn btn-block btn-danger">取消匹配</button>
+                    <button  v-else disabled class="btn btn-block btn-danger">启用匹配</button>
+                  </a>
+                </div>
+                <span v-if="(list.data.PreferredSupplier == item.storeid) && item.storeid!=0" data-toggle="tooltip" data-placement="top" title="主供应商" ></span>
+              </th>
+            </tr>
+          </thead>
+        </table>
+        </div>
+        <!-- 采购详情内容 -->
+        <table class="product_container table table-bordered">
+          <tbody v-if="productList.length>0">
+            <tr v-for="(product,ind) in productList" :key="ind" @click="trChangeIndex(ind)" :class="{'no_product':!product.canBuy,'multiple':product.openMultiple,'oldChrome':(isChrome && isChrome<56) || isIE,'nowTrIndex':nowTrIndex == ind}">
+              <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
+                <input type="checkbox" disabled v-model="product.isSelect" >
+                <p v-text="list.data.IsPage?(ind+1)+(list.data.PageIndex-1)*list.data.PageSize:ind+1"></p>
+                <i  title="删除" class="fa fa-window-close fa-lg"></i>
+              </td>
+              <!-- 商品名称列 -->
+              <td @click="startDown(ind)" :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind,'fixWidth':list.data.purchasingCompanyList.length>6}" class="text-right" data-toggle="popover" data-placement="bottom" :data-content="product.marks">
+                <span v-show="nowTrIndex==ind" class="nowTrIndex"></span>
+                <b>{{product.DrugsBase_DrugName}}</b>
+                <span class="label label-info" v-if="product.BranchesCount>0">多门店</span>
+                <span  class='label label-warning' v-if="product.Goods_ID==0">未关联</span>
+                <span class="label label-info" v-if="product.fixedSupplier" data-toggle="tooltip" data-placement="left" title="该商品指定有固定供应商">固定</span>
+                <span class="label label-success" v-if="product.source==1" data-toggle="tooltip" data-placement="left" title="搜索添加商品">
+                  <i class="fa fa-search-plus"></i>
+                </span>
+                <i class="marks" v-if="product.marks!=''"></i>
+                <p><span>{{product.DrugsBase_Specification}}</span> - {{product.DrugsBase_Manufacturer}}</p>
+                <p v-show="product.Recent_supplier"> 最近采购：{{product.Recent_supplier}} </p>
+                <span class="lastTransaction" v-if="product.LastTransaction" v-text="(new Date(product.LastTransaction)).toLocaleDateString()" data-toggle="tooltip" data-original-title="最近优E+采购时间"></span>
+                <span @click="copyPSN(product.PSN)" class="psn" v-if="product.PSN" v-text="product.PSN" data-toggle="tooltip" data-placement="right" title="ERP编号,点击复制"></span>
+              </td>
+              <!-- 库存 -->
+              <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}"  v-show="showStock">{{product.Stock}}</td>
+              <!-- 月销 -->
+              <td :class="{'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}" v-show="showMonthlySales" :style="{left:300+showStock*50+'px'}">{{product.MonthlySales}}</td>
+              <!-- 参考价 -->
+              <td v-show="showPrice" :style="{left:298+(showStock+showMonthlySales)*50+'px'}" :class="{'high':product.Price-product.HistoryPrice<=0 || product.HistoryPrice ==0,'low':product.Price-product.HistoryPrice>0,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
+                <span>{{product.HistoryPrice}}</span>
+                <p class="price_diff" v-if="product.HistoryPrice>0">
+                  <i class="fa" :class="{'fa-caret-up':product.Price-product.HistoryPrice<0,'fa-caret-down':product.Price-product.HistoryPrice>0}"></i>
+                  <span>{{Math.abs((product.Price-product.HistoryPrice).toFixed(2))}}</span>
+                </p>
+                <p v-else>0</p>
+              </td>
+              <!-- 采购数量 -->
+              <td  :style="{left:298+(showStock+showMonthlySales+showPrice)*50+'px'}" :class="{'fixed':showShadow,'multiple':product.openMultiple,'nowTrIndex':nowTrIndex == ind}">
+                <div class="inputContainer"   style="height:46px;">
+                  <input type="text" v-show="!product.openMultiple" readonly disabled class="form-control"   :class="{'out_top':product.outTop1,'mid':product.BuyCount%product.Goods_Pcs_Small>0}" v-model.number.lazy="product.BuyCount" >
+                  <p v-if="product.openMultiple" style="background-color:#fff;padding:6px 0;">
+                    <span v-html="multipleCount(ind)"></span>
+                      /
+                    <span>{{product.BuyCount}}</span>
+                  </p>
+                  <button  v-show="product.canMultiple && !product.openMultiple && product.mouseOn && product.outTop1 &&product.isSelect" class="open btn btn-primary btn-xs">供应商多选</button>
+                  <button  v-show="product.mouseOn && !product.outTop1 && list.data.BranchesList.length>0" class="open btn btn-primary btn-xs">指定门店</button>
+                </div>
+                <button  disabled v-show="product.canMultiple && product.openMultiple" class="opened btn btn-primary btn-xs">多选</button>
+                <i v-show="product.wrongPrice" data-toggle="popover" data-placement="top" data-content="该商品参考价同供应价差异较大，可能为以下情况：<br/>1 该商品为拆零商品，请仔细检查并修改采购数量！<br/>2 商品关联错误，请在商品目录管理中重新关联或本次取消该商品采购。" style="color:red;position:absolute;right:8px;top:28px;" class="fa fa-exclamation-circle"></i>
+                <p v-show="product.Goods_Pcs_Small>1 && product.BranchesJson==null && (!product.openMultiple) "  style="color:#999;position:absolute;left:18%;top:0;margin:0;font-size:12px;cursor:pointer;">
+                  中包装  
+                  <span>{{product.Goods_Pcs_Small}}</span>
+                  <i data-toggle="popover" data-placement="bottom" data-content="所选供应商只能按中包装整倍数采购，点击中包装数量可自动修改" class="fa fa-question-circle"></i>
+                </p>
+              </td>
+              <!-- 自定义列开始 -->
+              <td v-for="(custom,customIndex) in list.data.ExceptionField" :key="customIndex" v-show="custom.show" class="custom">
+                <div style="height:60px;overflow:hidden;word-break:break-all;">
+                  {{product.ExceptionFieldJsonModel?product.ExceptionFieldJsonModel[custom.customName]:"-"}}
+                </div>
+                
+              </td>
+              <!-- 自定义列结束 -->
+              <!-- 药企对应商品 -->
+              <td v-for="(item,key) in product.sellerJson1"  :key="key" class="td_supplier text-right" :class="{success:item,not_selected:!item||(!item.selected&&item.buyCount==0)||!product.isSelect||(product.openMultiple && item.buyCount==0),not_allowd:!item||!item.canSelect}">
+                <!-- 有商品 -->
+                <div v-if="item" >
+                  <b v-if="item.Remarks"></b>
+                  <i class="icon" v-show="(!product.openMultiple&&item.selected&&product.isSelect) || (item.buyCount>0 && product.openMultiple&&product.isSelect)" >
+                    <span class="fa fa-check"></span>
+                  </i>
+                  <p v-if="item.bargain>0">
+                    <span class="label label-warning">议</span>
+                    {{item.bargain}}
+                  </p>
+                  <span v-if="item.storeid == product.LastException && item.storeid!=0" style="color:#F39C12;" class="fa fa-exclamation-circle" data-toggle="tooltip" data-placement="top" title="上次选择供应商,存在开票/出库差异"></span>
+                  <span v-if="item.fixedSupplierTooltip" class='label-info fixCircle'></span>
+                  <span class="price"  :class="{'max':item.price==product.maxPrice,'min':item.price==product.minPrice}">{{item.price.toFixed(2)}}</span>
+                  <div v-show="!product.openMultiple || (product.openMultiple && item.buyCount==0) || (product.openMultiple && !product.isSelect)" class="info">
+                    <p v-if="item.storeid != 0">库存 {{item.stock}} <span v-if="item.Goods_Pcs_Small>1 && item.ismidpacking">{{"["+item.Goods_Pcs_Small+"]"}}</span></p>
+                    <p v-else>{{item.CompanyName}}</p>
+                    <p v-if="item.storeid != 0">效期 <span class="spxq" :class="{'overdue':item.overdue}">{{item.spxq.slice(2)||'-'}}</span></p>
+                    <p v-else>{{"共"+item.OfflineSupplierCount+"个报价"}}</p>
+                  </div>
+                  <div v-show="product.openMultiple && item.buyCount>0 &&product.isSelect">
+                    <input style="margin-left:4px;" disabled type="text" class="form-control" :value="item.buyCount"  :class="{'out_top':item.buyCount>item.stock}">
+                  </div>
+                </div>
+                <!-- 无商品 -->
+                <div v-else>
+                  -
+                </div>
+                <!-- popover -->
+                <p style="display:none;">较主供应商价格 + 10%</p>
+                <!-- 主供应商 较最低价  百分比   -->
+                <span v-if="!product.openMultiple && item && item.price > product.minPrice && item.storeid == list.data.PreferredSupplier && item.storeid!=0">{{'+'+((item.price-product.minPrice)/product.minPrice*100).toFixed(2)+'%'}}</span>
+              </td>
+            
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pageTurn text-right col-xs-12" v-if="list">
+        <p style="display:inline-block;vertical-align:top;">
+          显示方式:
+          <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
+            <option value="0" :selected="list.data.IsPage==false">不分页</option>
+            <option value="1" :selected="list.data.IsPage">分页</option>
+          </select>
+        </p>
+        <p v-if="list.data.IsPage" style="display:inline-block;vertical-align:top;">   
+          当前<span v-text="list.data.PageIndex"></span>/<span v-text="list.data.PageCount"></span>页 , 每页显示 
+          <select @change="pageSizeChange($event)" v-model="list.data.PageSize" class="form-control" style="width:72px;display:inline;" >
+            <option value="20" >20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>条
+          <ul style="margin:0;vertical-align:bottom;" class="pagination">
+            <li :class="{'disabled':list.data.PageIndex==1}" @click="pageIndexReduce">
+              <a href="javascript:;">
+                <span>&laquo;</span>
+              </a>
+            </li>
+            <li  v-for="(item,index) in list.data.PageCount" :key="index" @click="pageIndexChange(item)" v-if="item==1 || item==list.data.PageCount || item ==list.data.PageIndex ||(list.data.PageIndex-item<=3 && item<list.data.PageIndex) || (item - list.data.PageIndex<=3 && item>list.data.PageIndex)" :class="{'active':item==list.data.PageIndex}"><a href="javascript:;" v-text="showNum(item)"><a/></li>
+            <li :class="{'disabled':list.data.PageIndex==list.data.PageCount}" @click="pageIndexAdd">
+              <a href="javascript:;">
+                <span>&raquo;</span>
+              </a>
+            </li>
+          </ul>
+        </p>
+        
+      </div>
     </div>
+
+  </div>
 
 
     <!-- 底部统计结算固定条 -->
     <div class="account">
       <div class="account_inner  clear" v-if="list">
-        <p class="lf">共&nbsp;<span class="num">{{list.data.ProductCount}}</span>&nbsp;件商品,已选择&nbsp;<span class="num">{{list.data.ProductCountSelect}}</span>&nbsp;件,其中&nbsp;<span>{{list.data.noLinkCount}}</span>&nbsp;件未关联,&nbsp;&nbsp;&nbsp;合计:<span class="num">￥{{TotalPrice}}</span>(较上次节省:&nbsp;&nbsp;￥{{saveMoney}})</p>
-       
+        <p class="lf">共&nbsp;<span class="num">{{list.data.ProductCount}}</span>&nbsp;件商品,已选择&nbsp;<span class="num">{{list.data.ProductCountSelect}}</span>&nbsp;件,其中&nbsp;<span>{{list.data.noLinkCount}}</span>&nbsp;件未关联,<a :href="'/B30Purchase/CatalogueList?purchase_id='+id">点击关联</a>&nbsp;&nbsp;&nbsp;合计:<span class="num">￥{{TotalPrice}}</span>(较上次节省:&nbsp;&nbsp;￥{{saveMoney}})</p>
+        <button @click="submitOrder" class="rf">提交订单</button>
       </div>
     </div>
 
     <!-- 模态框 -->
-    <!-- 傻逼一样自己写这么多提示框 -->
     <!-- 1、筛选按钮模态框 -->
     <div class="modal fade" id="cg_filter" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
       <div class="modal-dialog" role="document">
@@ -347,7 +373,7 @@
             <h4 class="modal-title" id="myModalLabel">筛选</h4>
           </div>
           <div class="modal-body">
-             <div class="form-group row">
+              <div class="form-group row">
                   <div class="col-sm-3 text-right">选择</div>
                   <div class="col-sm-9">
                     <label><input type="radio" class="default" checked name="filter_select" value="0">全部</label>
@@ -395,7 +421,30 @@
 
                   </div>
               </div>
-
+              <!-- 自定义字段筛选 -->
+              <div class="customFilter" v-if="list">
+                  <h1 style="border-bottom:1px solid #ddd;font-size:16px;padding-bottom:10px;">自定义字段</h1>
+                  <div class="form-group row" v-for="(item,ind) in list.data.ExceptionField" :key="ind">
+                    <div class="col-sm-2 text-right">{{item.customName}}</div>
+                    <div class="col-sm-2">
+                      <label>
+                        <input class="default" type="radio" :name="item.customName" checked value="0">全部
+                      </label>
+                    </div>
+                    <div class="col-sm-2">
+                      <label>
+                        <input type="radio" :name="item.customName" value="1">不为空
+                      </label>
+                    </div>
+                    <div class="col-sm-6 searchWordsContainer">
+                      <label>
+                        <input type="radio" :name="item.customName" value="2">精准搜索
+                      </label>
+                      <input class="searchWords" style="width:160px;" type="text" disabled>
+                    </div>
+                  </div>
+                  
+              </div>
 
           </div>
           <div class="modal-footer">
@@ -450,7 +499,7 @@
 
                     <div class="form-group">
                         <label style="margin-right:15px;" class="col-sm-4" for="">例外条件</label>
-                        <label style="font-weight:normal;"><input disabled name="exception" value='0' type="radio" :checked="list.data.LimitPercentage<=0" >
+                        <label style="font-weight:normal;"><input name="exception" value='0' type="radio" disabled :checked="list.data.LimitPercentage<=0">
                         无
                         </label>
                     </div>
@@ -458,8 +507,8 @@
 
                     <div class="form-group row">
                         <label style="margin-right:15px;" class="col-sm-4"  for="">&nbsp;&nbsp;&nbsp;&nbsp;</label>
-                        <label style="font-weight:normal;" ><input disabled name="exception" value='1' type="radio" :checked="list.data.LimitPercentage>0"  >
-                        主供应商价格高于最低价<input :value="list.data.LimitPercentage" :disabled='list.data.LimitPercentage<=0' class="percent" style="width:44px;" type="text"> % 则选择最低价
+                        <label style="font-weight:normal;" ><input disabled name="exception" value='1' type="radio" :checked="list.data.LimitPercentage>0">
+                        主供应商价格高于最低价<input :value="list.data.LimitPercentage" disabled class="percent" style="width:44px;" type="text"> % 则选择最低价
                         </label>
                     </div>
  
@@ -467,7 +516,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" @click="showCGPH=false" class="btn btn-default" data-dismiss="modal">取消</button>
-            <button disabled type="button"  @click="showCGPH=false" class="post btn btn-primary">保存</button>
+            <button type="button"  disabled class="post btn btn-primary">保存</button>
           </div>
         </div>
       </div>
@@ -508,7 +557,7 @@
     <div class="branchesModal" style="display:none">
       <div class="branchesBody">
         <h4 class="title">多门店采购数量修改
-          <!-- <span class="rf shut">&times;</span> -->
+          <span class="rf shut">&times;</span>
         </h4>
         <div class="branchesContent" style="overflow-y:auto;">
           <p class="row">
@@ -529,6 +578,7 @@
           </p>
         </div>
         <div class="branchesFooter">
+          <button class="btn btn-default shut">取消</button>
           <button class="post btn btn-primary">确定</button>
         </div>
       </div>
@@ -689,7 +739,79 @@
         </p>
       </div>
     </div>
+    <!-- 16、线下供应商选择模态框-->
+    <div class="offlineModal" style="display:none;">
+      <div class="offlineBody">
+        <h4 class="title">
+          供应商选择
+          <span class="rf" @click="closeOffline" >&times;</span>
+        </h4>
+        <div class="offlineContent">
+          <ul>
+            <li v-for="(item,index) in offlineModalData" :key="index">
+              <p class="companyName">{{item.CompanyName}}</p>
+              <p class="total" :class="{'online':getIsOffline(item.storeid)}" v-text="getOfflineTotal(item.storeid)"></p>
+              <div @click="offlineSelect(item.storeid)" class="info" :class="{'selected':item.selected}" data-container="body" data-toggle="popover" data-placement="bottom" :data-content="item.Remarks">
+                  <p class="price">{{item.price}}</p>
+                  <p class="stock">
+                    {{'库存 '+item.stock}}
+                    <span v-if="item.Goods_Pcs_Small>1" v-text="'['+item.Goods_Pcs_Small+']'"></span>
+                  </p>
+                  <p class="spxq" v-text="getOfflineDate(item.spxq)"></p>
+                  <i v-if="item.selected" class="icon">
+                    <span class="fa fa-check"></span>
+                  </i>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="offlineFooter">
+          <button @click="offlinePost" class="post btn btn-primary">确定</button>
+        </div>
+      </div>
+    </div>
+    <!-- 17、自定义表头设置模态框 -->
+    <div  v-if="list && showCustomModal"  class="customModal" >
+      <div class="customBody">
+        <h4 class="title">自定义表头设置
+          <span @click="closeCustom" class="rf shut">&times;</span>
+        </h4>
+        <div class="customContent">
+          <div class="top">
+            <label>
+              <input @click="checkCustomAll($event)" type="checkbox">全部字段 <span class="count">( {{list.data.ExceptionField?list.data.ExceptionField.length+3:3}} )</span>
+            </label>
+            <!-- <p class="pull-right">
+              已选字段 <span class="selectCount"> {{customCheckedCount}} </span>
+            </p> -->
+          </div>
+          <div class="inner">
+            <div v-if="list.data.ExceptionField && list.data.ExceptionField.length>0" class="customTable">
+              <p class="titleLine">自定义字段</p>
+              <div class="customTableContent">
+                <label v-for="(item,key) in list.data.ExceptionField" :key="key"><input :value="item.customName" :checked="item.show" type="checkbox">{{item.customName}}</label>
+              </div>
+            </div>
+            <div class="referTab">
+              <p class="titleLine">参考字段</p>
+              <div class="referTableContent">
+                <label><input type="checkbox"  :checked="showStock">库存信息: 库存</label>
+                <label><input type="checkbox"  :checked="showMonthlySales">库存信息: 月销量</label>
+                <label><input type="checkbox"  :checked="showPrice">库存信息: 参考价</label>
+              </div>
 
+            </div>
+
+          </div>
+        </div>
+        <div class="customFooter">
+          <button @click="closeCustom" class="shut btn btn-default">取消</button>
+          <button @click="confirmCustom" class="post btn btn-primary">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+  
 </div>
 </template>
 
@@ -697,6 +819,8 @@
 import Vue from "vue";
 import moment from 'moment';
 export default {
+  name: "App",
+  components: {},
   data() {
     return {
       url:'/WebApi/',
@@ -720,7 +844,7 @@ export default {
       filter_source: 0, //过滤品种来源 1 导入，2搜索添加
       filter_fixedSupplier:0,  //固定供应商  0 全部  1固定   2不固定
       filter_LastTransaction:0,  //搜索最近采购  0全部   -1最近一天   -3最近3天
-      filter_ismidpacking:0,
+      filter_ismidpacking:0,     //筛选中包装    0全部    1不符合中包装
       VenderName: "", //添加店铺模态框中的搜索店铺输入框绑定
       productList: [],
       CompanyList: [],
@@ -738,8 +862,12 @@ export default {
       halfScreenHeight:0,          //屏幕高度的一半
       nowTrIndex:null,                 //当前方向箭头滚动到的下标
       offsetLeft:0,                  //固定顶部距离页面左侧的距离
+      offlineModalData:[],             //点击线下汇总弹出显示数据
       pageIndex:1,
-      pageSize:100
+      pageSize:100,
+      customCheckedCount:0,      //自定义表头已选数量
+      showCustomModal:false      //是否显示自定义模态框
+
     };
   },
   created() {
@@ -770,14 +898,16 @@ export default {
     })
     
     this.id = location.search.slice(4);
-    // if(localStorage[this.id+'sorting']) this.sorting = Number(localStorage[this.id+'sorting']);
-    // if(localStorage[this.id+'showCanBuy'])  this.showCanBuy=Boolean(Number(localStorage[this.id+'showCanBuy']));
-    // if(localStorage[this.id+'nowTrIndex'])  this.nowTrIndex=Number(localStorage[this.id+'nowTrIndex']);
+    if(localStorage[this.id+'sorting']) this.sorting = Number(localStorage[this.id+'sorting']);
+    if(localStorage[this.id+'showCanBuy'])  this.showCanBuy=Boolean(Number(localStorage[this.id+'showCanBuy']));
+    if(localStorage[this.id+'nowTrIndex'])  this.nowTrIndex=Number(localStorage[this.id+'nowTrIndex']);
+    if(localStorage[this.id+'PageIndex']) this.pageIndex = Number(localStorage[this.id+'PageIndex']);
+    if(localStorage[this.id+'PageSize']) this.pageSize = Number(localStorage[this.id+'PageSize']);
     this.getData();
   },
   mounted() {
-    //console.log("已挂载!");
-    //屏幕高度的一半
+
+    //屏幕高度的1/4
     this.halfScreenHeight = $(window).height()/4;
     //已选中商品右上角图标切换
     $(".product_container").on("mouseenter", ".icon", function() {
@@ -820,7 +950,7 @@ export default {
       var value = parseFloat($this.val());
       var price = parseFloat($(".yjModal .price").text()); //店铺价格
       if (isNaN(value) || value < 0 || value > price) {
-        console.log("店铺价格是"+price);
+        // console.log("店铺价格是"+price);
         $this.val(0);
         this.myToast("请输入合理价格");
         $this.focus();
@@ -877,10 +1007,7 @@ export default {
     var $branchesModal = $(".branchesModal");
     //点击关闭
     $branchesModal.on("click", ".shut", (e)=> {
-      var $this = $(e.target);
-      $this.parents(".branchesModal").slideUp();
-
-
+      $branchesModal.slideUp();
     });
     //增加采购门店
     $branchesModal.on('click','.fa-plus',(e)=>{
@@ -950,7 +1077,7 @@ export default {
     })
     //删除门店
     $branchesModal.on('click','.fa-minus-circle',(e)=>{
-      console.log($branchesModal.find('.post').data('psn'));
+      // console.log($branchesModal.find('.post').data('psn'));
       var $this = $(e.target);
       //如果只剩一个不能删除
       if($this.parents('.editBox').children('.row').length <=1 ){
@@ -962,24 +1089,23 @@ export default {
       var total = parseInt($branchesModal.find(".total").text());
       $branchesModal.find(".total").text(total-reduce);
       
-      var params = new URLSearchParams();
-      params.append('Purchase_Id',this.id);
-      params.append('psn',$branchesModal.find('.post').data('psn'));
-      params.append('shortName',$this.parent().find('.left').text() || $this.parent().find('.left option:selected').text());
+    /*    var params = new URLSearchParams();
+          params.append('Purchase_Id',this.id);
+          params.append('psn',$branchesModal.find('.post').data('psn'));
+          params.append('shortName',$this.parent().find('.left').text() || $this.parent().find('.left option:selected').text());
+          
+          this.$http.post(this.url+'PurchasePurchaseBranchesDelete',params).then(res=>{
+            if(res.data.success){
+              var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
+              this.productList[productIndex].BranchesJson.length = 0;
+              for(var item of JSON.parse(res.data.data)){
+                this.productList[productIndex].BranchesJson.push(item);
+              }
       
-      this.$http.post(this.url+'PurchasePurchaseBranchesDelete',params).then(res=>{
-        console.log(res.data);
-        if(res.data.success){
-          var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
-          this.productList[productIndex].BranchesJson.length = 0;
-          for(var item of JSON.parse(res.data.data)){
-            this.productList[productIndex].BranchesJson.push(item);
-          }
-   
-        }else{
-          this.myConfirm(res.data.info);
-        }
-      })
+            }else{
+              this.myConfirm(res.data.info);
+            }
+          }) */
 
 
     })
@@ -1100,7 +1226,10 @@ export default {
       params.append('psn',$branchesModal.find('.post').data('psn'));
       $branchesModal.find('.editBox>.row').each(function(key,dom){
         var $row =$(dom);
-        var BranchesName = $row.find('.left').text() || $row.find('.left option:selected').text();
+
+        var cloneRow = $row.find('.left').clone();
+        cloneRow.find(":nth-child(n)").remove();
+        var BranchesName = cloneRow.text() || $row.find('.left option:selected').text();
         var BranchesBuyCount = $row.find('.right>input').val();
         params.append(key,BranchesName);
         params.append(key+'_1',BranchesBuyCount);
@@ -1119,37 +1248,39 @@ export default {
             }
           }else{
             var productIndex =  Number($branchesModal.find('.post').data('productIndex'));
-            this.productList[productIndex].BranchesJson.length = 0;
+            this.productList[productIndex].BranchesJson = null;
+            this.productList[productIndex].BranchesJson=[];
             for(var item of JSON.parse(res.data.data)){
               this.productList[productIndex].BranchesJson.push(item);
             }
           }
         })
         .catch(err => {
-          //console.log(err);
+          // console.log(err);
           this.myConfirm("网络错误,请重试!");
         });
       //向服务器发送修改后的总数
-      this.$http
-        .post(this.url+"PurchasePlanModifyBuyCount", {
-          id: this.productList[productIndex].id,
-          BuyCount: total
-        })
-        .then(res => {
-          if (!res.data.success) {
-            this.myToast(res.data.info);
-          }
-        })
-        .catch(err => {
-          //console.log(err);
-          this.myToast("网络错误,请重试");
-        });
+      /* this.$http
+          .post(this.url+"PurchasePlanModifyBuyCount", {
+            id: this.productList[productIndex].id,
+            BuyCount: total
+          })
+          .then(res => {
+            if (!res.data.success) {
+              this.myToast(res.data.info);
+            }
+          })
+          .catch(err => {
+            //console.log(err);
+            this.myToast("网络错误,请重试");
+      }); */
 
       $branchesModal.slideUp();
     });
 
     //采购偏好设置提交按钮
     $("#cg_preference .post").click(e => {
+      this.pageIndex = 1;
       //清除之前的筛选条件
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1183,9 +1314,9 @@ export default {
         !$("#cg_preference input[name='IsJxq']").is(":checked")
       );
        this.list.data.IsMatchJxq = Boolean(IsJxq);
-      var habit =
-        Number($("#cg_preference input[name='habit']:checked").val()) || 0;
+      var habit = Number($("#cg_preference input[name='habit']:checked").val()) || 0;
       this.list.data.PriceEqual = habit;
+
       
       var PreferredSupplier = Number( $("#cg_preference select[name='PreferredSupplier'] option:selected").val() );
       var LimitPercentage = Number( $("#cg_preference .percent").val() ) || 0;
@@ -1241,6 +1372,7 @@ export default {
     //筛选
     //1.筛选提交按钮
     $("#cg_filter .post").click(e => { 
+      this.pageIndex = 1;
       //筛选数量
       var count = 0;
       var filter_select = Number(
@@ -1279,6 +1411,26 @@ export default {
       this.filter_ismidpacking = filter_ismidpacking;
       if(filter_ismidpacking != 0) count++;
 
+      // 自定义字段
+      var Customobj = {};
+      $('#cg_filter .customFilter input:radio:checked').each(function (i,ele) {
+        var $customRadio = $(ele);
+        var val = $customRadio.val();
+        var key = $customRadio.attr('name');
+        var searchWords = $customRadio.parents('.form-group').find('.searchWords').val();
+        if( val =='0' ){
+
+        }else if(val == '1'){
+          Customobj[key] = '';
+          count++;
+        }else if(val == '2'){
+          Customobj[key] = searchWords;
+          count++;
+        }
+      })
+
+      
+
       var $label = $(".box_header .filter_num");
       if (count > 0) {
         $label.text(count);
@@ -1300,7 +1452,9 @@ export default {
             filter_source,
             filter_fixedSupplier,
             filter_LastTransaction,
-            ismidpacking:filter_ismidpacking
+            ismidpacking:filter_ismidpacking,
+            filter_ExceptionField:JSON.stringify(Customobj)
+
           }).then(res => {
             if (res.data.success) {
               this.list = res.data;
@@ -1322,6 +1476,7 @@ export default {
     });
     //2.清除筛选按钮
     $("#cg_filter .cancel").on("click", e => {
+      this.pageIndex = 1;
       //console.log(e.target);
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1330,6 +1485,13 @@ export default {
       this.filter_source = 0;
       this.filter_fixedSupplier = 0;
       this.filter_LastTransaction = 0;
+      this.filter_ismidpacking = 0;
+
+      //自定义字段输入框禁用
+      $('#cg_filter .customFilter .searchWords').each(function(i,ele){
+        $(ele).val('').prop('disabled',true);
+      })
+
       //请求数据
       this.showLoading = true;
       this.$http
@@ -1344,7 +1506,8 @@ export default {
           filter_pricetype: 0,
           filter_source: 0,
           filter_fixedSupplier:0,
-          filter_LastTransaction:0
+          filter_LastTransaction:0,
+          ismidpacking:0
         })
         .then(res => {
           if (res.data.success) {
@@ -1363,6 +1526,25 @@ export default {
           this.showLoading = false;
         });
     });
+
+    //3.删选模态框自定义字段radio切换
+    $('#cg_filter').on('change',".customFilter input[type='radio']",function(e){
+      var $customRadio = $(e.target);
+      if($customRadio.val() == '2'){
+        // $customRadio.parent().next().prop('disabled',false);
+        $customRadio.parents('.form-group').find('.searchWords').prop('disabled',false);
+      }else{
+        $customRadio.parents('.form-group').find('.searchWords').prop('disabled',true).val('');
+      }
+    })
+
+    //4.自定义字段点击精准搜索的输入框 , 精准搜索的radio选中
+    $('#cg_filter').on('click','.customFilter .searchWordsContainer',function(){
+      var $this = $(this);
+       $this.find(':radio').prop('checked',true);
+      $this.children(':text').prop('disabled',false);
+    })
+
 
     //页面滚动时让fixed_top固定在顶部
     var $fixed_top = $(".fixed_top");
@@ -1402,11 +1584,18 @@ export default {
     });
     
     window.onbeforeunload=()=>{
+      if(this.list.data.ExceptionField){
+        for(var item of this.list.data.ExceptionField){
+          localStorage[this.id + item.customName] = item.show;
+        }
+      }
       if( !this.OverStock && !this.PurchaseSpxq && !this.PriceChange){  
         localStorage[ this.id] = $(window).scrollTop();
         localStorage[this.id+'sorting'] = this.sorting;
         localStorage[this.id+'showCanBuy'] = Number(this.showCanBuy);
         localStorage[this.id+'nowTrIndex'] = this.nowTrIndex;
+        localStorage[this.id+'PageIndex'] = this.list.data.PageIndex;
+        localStorage[this.id+'PageSize'] = this.list.data.PageSize;
       }else{
         localStorage[ this.id] = 0;
       }
@@ -1438,7 +1627,7 @@ export default {
     })
     
 
-    //类似EXCEL滚动
+    //滚动
     var lastPress = new Date();
     var nowPress = null;
     $(window).keydown((e)=>{
@@ -1446,7 +1635,6 @@ export default {
         var Scroll = $(window).scrollTop();
         nowPress=new Date();
         if(nowPress-lastPress>300){
-          //console.log(this.nextScrollHeight);
           $('html:not(:animated),body').animate({
             scrollTop:Scroll+this.nextScrollHeight
           },'slow','linear')
@@ -1468,10 +1656,8 @@ export default {
           this.prevScrollHeight = $(`.product_container tr:eq(${this.nowTrIndex-1})`).outerHeight() || 0;
         }
       }
-    });
+    })
 
-
-    
   },
   beforeUpdate(){
     $("[data-toggle='tooltip']").tooltip('destroy');
@@ -1574,7 +1760,12 @@ export default {
                         sorting: this.sorting,
                         filter_select: this.filter_select,
                         filter_pricetype: this.filter_pricetype,
-                        filter_source: this.filter_source
+                        filter_source: this.filter_source,
+                        filter_fixedSupplier: this.filter_fixedSupplier,
+                        filter_LastTransaction:this.filter_LastTransaction,
+                        ismidpacking:this.filter_ismidpacking,
+                        pageIndex : this.pageIndex,
+                        pageSize : this.pageSize
                       })
                       .then(res => {
                         this.showLoading = false;
@@ -1613,7 +1804,11 @@ export default {
                         sorting: this.sorting,
                         filter_select: this.filter_select,
                         filter_pricetype: this.filter_pricetype,
-                        filter_source: this.filter_source
+                        filter_source: this.filter_source,
+                        filter_LastTransaction:this.filter_LastTransaction,
+                        ismidpacking:this.filter_ismidpacking,
+                        pageIndex : this.pageIndex,
+                        pageSize : this.pageSize
                       })
                       .then(res => {
                         this.showLoading = false;
@@ -1656,7 +1851,7 @@ export default {
           //console.log("created中请求数据失败");
         });
     },
-    //重新计算productList,使其sellerJson1数组长度等于商家个数,便于v-for循环
+    //重新计算productList,便于循环
     resetProductList() {
       var len = this.list.data.purchasingCompanyList.length;
       this.productList.forEach((ele, index, arr) => {
@@ -1695,6 +1890,7 @@ export default {
       });
     },
     chooseLow() {
+      this.pageIndex = 1;
       //清楚筛选条件
       $("#cg_filter .default").prop("checked", true);
       $(".box_header .filter_num").text("");
@@ -1768,160 +1964,8 @@ export default {
         return false;
       }
     },
-    //点击X号取消选择
-    /**@augments
-     * ind产品下标
-     * key产品中供应商对应产品下标
-     * buyCount购买数量
-     * price单价
-     */
-    cancel_select(ind, key, buyCount, price) {
 
-      if(!this.productList[ind].openMultiple){
-        this.productList[ind].sellerJson1[key].selected = false;
-        this.productList[ind].sellerJson1[key].prevSelected = true;
-        this.productList[ind].isSelect = false;
-        this.checkall = false;
-        if (this.productList[ind].outTop1) {
-          this.productList[ind].outTop0 = true;
-          this.productList[ind].outTop1 = false;
-          this.list.data.CountPurchaseSock--;
-        }
-        //计算节省金额
-        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-          var save = (this.productList[ind].HistoryPrice-(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price))*this.productList[ind].BuyCount;
-          this.list.data.SelectSavePriceAll -=save;
-          this.list.data.SelectPriceAll -= this.productList[ind].BuyCount*(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
-        }
-        
-        //计算近效期
-        if (this.productList[ind].sellerJson1[key].overdue)
-          this.list.data.CountSpxq--;
-        //计算小计
-        var buyCount = this.productList[ind].BuyCount,
-          price = this.productList[ind].sellerJson1[key].price;
-        // console.log(buyCount,price);
-        // console.log('之前的小计'+this.list.data.purchasingCompanyList[key].Total);
-        this.list.data.purchasingCompanyList[key].Total -= buyCount * price;
-        // console.log('现在的价格'+this.list.data.purchasingCompanyList[key].Total);
-        //计算已选择商品-1
-        this.list.data.ProductCountSelect--;
-        //向服务器发送数据
-        var obj = {},
-          str = "";
-        obj[this.productList[ind].id] = false;
-        for (var a in obj) {
-          str += a + ":";
-          str += false;
-        }
-        //console.log(str);
-        this.$http
-          .post(this.url+"PurchasePlanSetisSelect", {
-            data: str
-          })
-          .then(res => {
-            if(!res.data.success){
-              if(res.data.info=="请先登录"){
-                $('.loginConfirm').fadeIn();
-              }else{
-                this.myToast(res.data.info);
-              }
-            }
-          })
-          .catch(err => {
-            this.myConfirm("网络错误,请重试!");
-            //console.log(err);
-          });
-      }else if(this.productList[ind].openMultiple){
-        //在多选状态下,取消勾选商品
-        var multipleCount=0,
-            overdue = 0;
-        this.productList[ind].sellerJson1.forEach((ele,i)=>{
-          if(ele.buyCount>0){
-            multipleCount++;
-            if(i == key){
-              var price = ele.price;
-              //console.log(price*ele.buyCount);
-              this.list.data.purchasingCompanyList[key].Total-=(price*ele.buyCount);
-            }
-            if(ele.overdue){
-              overdue++;
-            }
-          } 
-        })
-        if(multipleCount==1){
-          //在多选状态下,取消勾选,但是只有一个商品
-          this.productList[ind].isSelect=false;
-          this.productList[ind].openMultiple = false;
-          this.productList[ind].sellerJson1[key].selected = false;
-          this.productList[ind].sellerJson1[key].preSelected = true;
 
-          //已选商品数
-          this.list.data.ProductCountSelect--;
-          if(this.productList[ind].sellerJson1[key].overdue){
-            this.list.data.CountSpxq--;
-          }
-
-          //发送修改购买数量
-           var params = new URLSearchParams();
-            params.append("id", this.productList[ind].id);
-            params.append("BuyCount", this.productList[ind].BuyCount);
-          this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
-            console.log(res.data)
-          }).catch(err=>{
-            this.myConfirm("网络错误,请重试!");
-          })
-
-          //发送此商品未选中
-          var obj = {};
-          obj[this.productList[ind].id] = false;
-          var str = "";
-          for (var ak in obj) {
-            str += ak + ":";
-            str += obj[ak] + ",";
-          }
-          //console.log(str);
-          this.$http.post(this.url+"PurchasePlanSetisSelect", {
-              data: str
-            })
-            .then(res => {
-              if(!res.data.success){
-                if(res.data.info=="请先登录"){
-                  $('.loginConfirm').fadeIn();
-                }else{
-                  this.myToast(res.data.info);
-                }
-              }
-            })
-            .catch(err => {
-              this.myToast("网络错误,请重试!");
-            });
-
-        }else{
-          this.productList[ind].sellerJson1[key].selected = false;
-          this.productList[ind].sellerJson1[key].preSelected = false;
-          if(overdue == 1 && this.productList[ind].sellerJson1[key].overdue) this.list.data.CountSpxq--;
-          //向服务器发送数据
-          var storeid = this.productList[ind].sellerJson1[key].storeid,
-              BuyCount = 0,
-              bargain = this.productList[ind].sellerJson1[key].bargain,
-              id = this.productList[ind].id;
-          this.multiplePost(id,storeid,BuyCount,bargain);
-        }
-
-        //计算节省金额
-          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-            var save = (this.productList[ind].HistoryPrice-(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price))*this.productList[ind].sellerJson1[key].buyCount;
-            this.list.data.SelectSavePriceAll -=save;
-            this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[key].buyCount*(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
-          }
-        //console.log(ind,key);
-        this.productList[ind].sellerJson1[key].buyCount=0;
-        
-         
-
-      }
-    },
     //点击产品,如果未勾选则勾选且将此商品中,其他供应商商品取消勾选
     /**@augments
      * ind产品下标
@@ -1929,240 +1973,7 @@ export default {
      * buyCount购买数量
      * price单价
      */
-    product_choose(ind, key, buyCount, price) {
-      //如果是取消匹配下的店铺 直接return
-      if (!this.productList[ind].sellerJson1[key].canSelect) return;
-      //如果未勾选
-      if (!this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) {
-        var bargain = 0;
-        var hasSelect = 0;
-        var preSelectIndex = null;
-        this.productList[ind].sellerJson1.forEach((ele, i) => {
-          if (ele && ele.selected) {
-            hasSelect++;
-            preSelectIndex = i; //之前选中的商品的下标
-            if(i!==key){
-              //小计更新
-              var price = ele.price,
-                buyCount = this.productList[ind].BuyCount;
-              this.list.data.purchasingCompanyList[i].Total -= price * buyCount;
-            }
-          }
-          if (i == key) {
-            ele.selected = true;
-            ele.prevSelected = true;
-            this.productList[ind].isSelect = true;
-            bargain = ele.bargain;
-            //计算重选的商品是否超库存
-            if (this.productList[ind].BuyCount > ele.stock) {
-              //当前选中的商品库存小于购买数
-              if (!this.productList[ind].outTop0 && !ele.offline) {
-                this.list.data.CountPurchaseSock++;
-                this.productList[ind].outTop0 = true;
-                this.productList[ind].outTop1 = true;
-              } else if (
-                this.productList[ind].outTop0 &&
-                !this.productList[ind].outTop1 &&
-                !ele.offline
-              ) {
-                this.list.data.CountPurchaseSock++;
-                this.productList[ind].outTop0 = true;
-                this.productList[ind].outTop1 = true;
-              } else if (ele.offline) {
-                this.productList[ind].outTop0 = false;
-                this.productList[ind].outTop1 = false;
-              }
-            } else {
-              if (this.productList[ind].outTop1 && !ele.offline) {
-                this.list.data.CountPurchaseSock--;
-                this.productList[ind].outTop0 = false;
-                this.productList[ind].outTop1 = false;
-              } else {
-              }
-            }
 
-            //小计更新
-            var price = this.productList[ind].sellerJson1[key].price,
-              buyCount = this.productList[ind].BuyCount;
-            this.list.data.purchasingCompanyList[key].Total += price * buyCount;
-            //更改产品历史价格
-            this.productList[ind].Price = price;
-            
-            //判断wrongPrice
-            if(this.productList[ind].HistoryPrice > 0 && (this.productList[ind].HistoryPrice >= this.productList[ind].Price * 2 || this.productList[ind].Price >= this.productList[ind].HistoryPrice * 2)){
-              this.productList[ind].wrongPrice = true;
-            }else{
-              this.productList[ind].wrongPrice = false;
-            }
-
-
-          } else {
-            ele.selected = false;
-            ele.prevSelected = false;
-          }
-        });
-        if (hasSelect == 0) {
-          //之前没有选中的商品
-          this.list.data.ProductCountSelect++;
-          if (this.productList[ind].sellerJson1[key].overdue) {
-            this.list.data.CountSpxq++;
-          }
-          //计算节省金额
-          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-            //当修改后的购买数量大于之前的购买数量
-              var save= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price));
-              this.list.data.SelectSavePriceAll +=save;
-              this.list.data.SelectPriceAll += this.productList[ind].BuyCount * (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
-          
-          }
-
-        } else {
-          //之前有选中的商品
-          //console.log(preSelectIndex);
-          if (this.productList[ind].sellerJson1[preSelectIndex].overdue) {
-            //之前选中的商品是近效期
-            //console.log("之前选中的商品是近效期商品");
-            if (!this.productList[ind].sellerJson1[key].overdue)
-              this.list.data.CountSpxq--;
-          } else {
-            if (this.productList[ind].sellerJson1[key].overdue)
-              this.list.data.CountSpxq++;
-          }
-
-          //计算节省金额
-          //减去之前商品的节省金额
-          if(this.productList[ind].HistoryPrice > 0 && (this.productList[ind].HistoryPrice >=  this.productList[ind].sellerJson1[preSelectIndex].price*2 ||  this.productList[ind].sellerJson1[preSelectIndex].price >= this.productList[ind].HistoryPrice*2)){
-              //之前选中也是wrongPrice价格
-          }else if(this.productList[ind].HistoryPrice > 0 && !this.productList[ind].wrongPrice){
-            var preSave= this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - (this.productList[ind].sellerJson1[preSelectIndex].bargain || this.productList[ind].sellerJson1[preSelectIndex].price));
-            // console.log("presave"+preSave);
-            this.list.data.SelectSavePriceAll -=preSave;
-            this.list.data.SelectPriceAll -= this.productList[ind].BuyCount * (this.productList[ind].sellerJson1[preSelectIndex].bargain || this.productList[ind].sellerJson1[preSelectIndex].price);
-
-            var nowSave = this.productList[ind].BuyCount*(this.productList[ind].HistoryPrice - (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price));
-            // console.log('nowSave'+nowSave);
-            this.list.data.SelectSavePriceAll +=nowSave;
-            this.list.data.SelectPriceAll += this.productList[ind].BuyCount * (this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
-          }
-          
-           
-
-
-          // if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-          //   //当修改后的购买数量大于之前的购买数量
-              
-          
-          // }
-
-        }
-        // this.productList[ind].sellerJson1[key].bargain=bargain;   //转移议价
-        //向服务器发送数据选中的商品
-        this.$http
-          .post(this.url+"PurchasePlanChangeStoreid", {
-            id: this.productList[ind].id,
-            storeid: this.list.data.purchasingCompanyList[key].storeid,
-            bargain: bargain
-          })
-          .then(res => {
-            if(!res.data.success){
-              if(res.data.info=="请先登录"){
-                $('.loginConfirm').fadeIn();
-              }else{
-                this.myToast(res.data.info);
-              }
-            }
-          })
-          .catch(err => {
-            //console.log(err);
-            this.myConfirm("网络错误,请重试!");
-          });
-        //向服务器发送此商品勾选
-        var obj = {},
-          str = "";
-        obj[this.productList[ind].id] = true;
-        for (var a in obj) {
-          str += a + ":";
-          str += obj[a];
-        }
-        var params = new URLSearchParams();
-        params.append("data", str);
-        this.$http
-          .post(this.url+"PurchasePlanSetisSelect", params)
-          .then(res => {
-            if (!res.data.success) {
-              this.myConfirm(res.data.info);
-            }
-          })
-          .catch(err => {
-            this.myToast("网络错误,请重试!");
-          });
-      } else if((this.productList[ind].sellerJson1[key].selected && !this.productList[ind].openMultiple) || (this.productList[ind].sellerJson1[key].buyCount>0 && this.productList[ind].openMultiple)) {
-        //如果已勾选或者为多选供应商 buyCount>0 ,则开启议价窗口
-        if (this.productList[ind].sellerJson1[key].offline) {
-          this.myToast("线上商品才能议价");
-          return;
-        }
-        console.log(this.productList[ind].sellerJson1[key].buyCount);
-        console.log(this.productList[ind].openMultiple);
-        $(".yjModal .post").data({
-          productIndex: ind,
-          storeIndex: key,
-          purchaselistid: this.productList[ind].id,
-          storeid: this.list.data.purchasingCompanyList[key].storeid,
-          buyCount:this.productList[ind].sellerJson1[key].buyCount,
-          openMultiple:this.productList[ind].openMultiple
-        });
-        $(".yjModal .companyName").text(
-          this.list.data.purchasingCompanyList[key].CompanyName
-        );
-        //console.log(this.list.data.purchasingCompanyList[key].CompanyName);
-        $(".yjModal .price").text(this.productList[ind].sellerJson1[key].price);
-        $(".yjModal .historyPrice").text(this.productList[ind].HistoryPrice);
-        $(".yjModal .input").val(this.productList[ind].sellerJson1[key].bargain);
-        $(".yjModal").slideDown();
-      } else if(this.productList[ind].openMultiple && this.productList[ind].sellerJson1[key].buyCount==0){
-        //已经开启供应商多选且未选中此商品 buyCount的值为初始想购买的数量减去已经购买的数量
-        var initialBuyCount = this.productList[ind].BuyCount;
-        var hasOverdue = 0;
-        this.productList[ind].sellerJson1.forEach((p,k)=>{
-          initialBuyCount-=p.buyCount;
-          if(p && p.buyCount>0 && p.overdue && k!=key){
-            hasOverdue++;
-          }
-        })
-        //近效期数量变化
-        if(this.productList[ind].sellerJson1[key].overdue && hasOverdue==0){
-          this.list.data.CountSpxq++;
-        }
-        //console.log(initialBuyCount);
-        //当前选择的供应商库存大于未购买的数量  ...
-        if( this.productList[ind].sellerJson1[key].stock >= initialBuyCount && initialBuyCount>=0 ){
-          this.productList[ind].sellerJson1[key].buyCount = initialBuyCount || 1;
-        }else if( this.productList[ind].sellerJson1[key].stock < initialBuyCount && initialBuyCount>=0 ){
-          this.productList[ind].sellerJson1[key].buyCount = this.productList[ind].sellerJson1[key].stock;
-        }
-        if(initialBuyCount<0){
-          this.productList[ind].sellerJson1[key].buyCount = 1;
-        }
-        var price = this.productList[ind].sellerJson1[key].price;
-        this.list.data.purchasingCompanyList[key].Total+=price * this.productList[ind].sellerJson1[key].buyCount;
-        
-        var storeid = this.productList[ind].sellerJson1[key].storeid,
-            BuyCount = this.productList[ind].sellerJson1[key].buyCount,
-            bargain = this.productList[ind].sellerJson1[key].bargain,
-            id = this.productList[ind].id;
-
-        //修改节省金额
-        if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-          var save = (this.productList[ind].HistoryPrice-(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price))*this.productList[ind].sellerJson1[key].buyCount;
-          this.list.data.SelectSavePriceAll +=save;
-          this.list.data.SelectPriceAll += this.productList[ind].sellerJson1[key].buyCount*(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
-        }
-        //向服务器发送数据
-        this.multiplePost(id,storeid,BuyCount,bargain);
-
-      }
-    },
     //不可采产品tr禁用状态,input禁用,设置product的canBuy为false
     noProduct(ind) {
       var res = this.productList[ind].sellerJson1.some((ele, i) => {
@@ -2265,10 +2076,7 @@ export default {
     },
     //点击购买数量输入框,如果是多门店则弹出模态框修改
     showBranchesModal(e, ind) {
-      if (
-        this.productList[ind].BranchesCount > 0 &&
-        this.productList[ind].isSelect
-      ) {
+      if (this.productList[ind].BranchesJson != null &&this.productList[ind].isSelect ) {
         var html = "<div class='editBox'>";
         var arr = this.productList[ind].BranchesJson;
         //console.log(arr.length);
@@ -2285,7 +2093,7 @@ export default {
              <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
           </p>`;
         }
-        html += `</div><p class="row"><span class="left col-xs-4"><button class="btn btn-default fa fa-plus">新增采购门店</button></span></p><p class="row">
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
             <span class="left col-xs-4">总计</span>
             <span class="right total col-xs-8">${
               this.productList[ind].BuyCount
@@ -2296,7 +2104,60 @@ export default {
         $(".branchesModal .post").data("psn", this.productList[ind].PSN);
         $(".branchesModal").slideDown();
       } else if (this.productList[ind].BranchesCount > 0) {
-        e.target.blur();
+        try {
+            e.target.blur();
+        } catch (error) {
+          
+        } 
+      }
+    },
+    showBranchesModal2(ind){
+      if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 && this.productList[ind].BranchesJson == null ){
+          var html = "<div class='editBox'>";
+
+          html += `<p class="row">
+            <span class="left col-xs-4">${this.list.data.BranchesList[0]}</span>
+            <span class="right col-xs-4">
+              <input style="width:100px;"  value=${
+            this.productList[ind].BuyCount
+          } class="input form-control" type='number'/>
+            </span>
+             <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
+          </p>`;
+
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
+            <span class="left col-xs-4">总计</span>
+            <span class="right total col-xs-8">${
+              this.productList[ind].BuyCount
+            }</span>
+          </p>`;
+        $(".branchesModal .branchesContent").html(html);
+        $(".branchesModal .post").data("productIndex", ind);
+        $(".branchesModal .post").data("psn", this.productList[ind].PSN);
+        $(".branchesModal").slideDown();
+      }else if(this.productList[ind].isSelect && this.list.data.BranchesList.length>0 && this.productList[ind].BranchesJson != null){
+        var html = "<div class='editBox'>";
+        for(var item of this.productList[ind].BranchesJson){
+          html += `<p class="row">
+            <span class="left col-xs-4">${item.NameBranches}</span>
+            <span class="right col-xs-4">
+              <input style="width:100px;"  value=${
+            item.BuyCount
+          } class="input form-control" type='number'/>
+            </span>
+             <i class="fa fa-minus-circle" aria-hidden="true" title="删除"></i>
+          </p>`;
+        }
+        html += `</div><p class="row"><span class="left col-xs-4">${this.list.data.BranchesList.length>0?'<button class="btn btn-default fa fa-plus">新增采购门店</button>':''}</span></p><p class="row">
+            <span class="left col-xs-4">总计</span>
+            <span class="right total col-xs-8">${
+              this.productList[ind].BuyCount
+            }</span>
+          </p>`;
+        $(".branchesModal .branchesContent").html(html);
+        $(".branchesModal .post").data("productIndex", ind);
+        $(".branchesModal .post").data("psn", this.productList[ind].PSN);
+        $(".branchesModal").slideDown();
       }
     },
     //计算小计
@@ -2311,423 +2172,8 @@ export default {
       return count.toFixed(2);
     },
     //商品全选和取消全选,并取消或者选中商品的勾选
-    selectAll(e) {
-      if(this.productList.length==0) return;
-      var obj = {};
-      //取消勾选
-      if (!e.target.checked) {
-        //计算小计
-        this.productList.forEach((item, ind) => {
-          var buyCount = item.BuyCount;
-          var hasOverdue = 0; //多选状态下近效期
-          item.sellerJson1.forEach((product, index) => {
-            if (item.isSelect && product && product.selected &&!item.openMultiple) {
-                //未开启多选供应商计算小计
-                this.list.data.purchasingCompanyList[index].Total = (
-                  this.list.data.purchasingCompanyList[index].Total -
-                  buyCount * product.price
-                ).toFixed(2);
-                this.list.data.purchasingCompanyList[index].Total = Number(
-                  this.list.data.purchasingCompanyList[index].Total
-                );
-              
-              //if (item.outTop1) this.list.data.CountPurchaseSock--; //超库存
-              if(buyCount>product.stock){
-                this.list.data.CountPurchaseSock--;
-                item.outTop1=false;
-                //this.$set(this.productList,ind,this.productList[ind])
-              }
-              if (product.overdue) this.list.data.CountSpxq--; //近效期
-              //计算节省金额
-              if(item.HistoryPrice>0 && !item.wrongPrice){
-                var save = (item.HistoryPrice-(product.bargain||product.price))*buyCount;
-                this.list.data.SelectSavePriceAll -= save;
-                this.list.data.SelectPriceAll -= buyCount * (product.bargain||product.price);
-                //console.log(this.list.data.SelectSavePriceAll,this.list.data.SelectPriceAll);
-              }
 
-            }else if(item.isSelect && item.openMultiple && product && product.buyCount>0){
-              this.list.data.purchasingCompanyList[index].Total -= (product.price * product.buyCount);
-              if(item.multipleOutTop){
-                this.list.data.CountPurchaseSock--;
-                item.multipleOutTop = false;
-              }
-              //计算多选模式节省金额
-              if(!item.wrongPrice && item.HistoryPrice>0){
-                var save = (item.HistoryPrice-(product.bargain||product.price))*product.buyCount;
-                this.list.data.SelectSavePriceAll -=save;
-                this.list.data.SelectPriceAll -= product.buyCount*(product.bargain||product.price);
-              }
-              
-
-              if(product.overdue) hasOverdue++;
-              
-
-            }
-
-          });
-          if(hasOverdue>0) this.list.data.CountSpxq--;
-        });
-
-        // this.list.data.SelectSavePriceAll = 0;
-        // this.list.data.SelectPriceAll = 0;
-
-        //计算已选择商品数
-        var checkNum = 0;
-        this.productList.forEach((ele, i) => {
-          if (ele.isSelect) checkNum++;
-        });
-        this.list.data.ProductCountSelect -= checkNum;
-
-        this.productList.forEach((ele, i) => {
-          if (ele.canBuy) {
-            ele.isSelect = false;
-            obj[ele.id] = false;
-          }
-          ele.sellerJson1.forEach((item, i) => {
-            if (item && item.selected) {
-              item.prevSelected = true;
-            }
-            item.selected = false;
-          });
-        });
-      } else {
-        this.productList.forEach((item, ind) => {
-          var buyCount = item.BuyCount;
-          var hasOverdue = 0;
-          item.sellerJson1.forEach((product, index) => {
-            if (product.canSelect && product.prevSelected && !item.isSelect && !item.openMultiple) {
-              var stock=product.stock;
-              //单选模式下小计累加上去
-              this.list.data.purchasingCompanyList[index].Total += buyCount * product.price;
-              //if (item.outTop1) this.list.data.CountPurchaseSock++; 
-              if(buyCount>stock){//超库存
-                this.list.data.CountPurchaseSock++;
-                item.outTop0=true;
-                item.outTop1=true;
-                //this.$set(this.productList,ind,this.productList[ind])
-              }
-              if (product.overdue) this.list.data.CountSpxq++; //近效期
-              //计算节省金额
-              if(item.HistoryPrice>0 && !item.wrongPrice){
-                //console.log(item.DrugsBase_DrugName);
-                var save = (item.HistoryPrice-(product.bargain||product.price))*buyCount;
-                this.list.data.SelectSavePriceAll +=save;
-                this.list.data.SelectPriceAll += buyCount * (product.bargain||product.price);
-              }
-            }else if(product.canSelect && item.openMultiple && product.buyCount>0 && !item.isSelect){
-              this.list.data.purchasingCompanyList[index].Total += product.buyCount * product.price;
-              if(product.buyCount > product.stock && !item.multipleOutTop){
-                this.list.data.CountPurchaseSock++;
-                item.multipleOutTop= true ;
-              }
-              //计算多选模式节省金额
-              if(!item.wrongPrice && item.HistoryPrice>0){
-                var save = (item.HistoryPrice-(product.bargain||product.price))*product.buyCount;
-                this.list.data.SelectSavePriceAll +=save;
-                this.list.data.SelectPriceAll += product.buyCount*(product.bargain||product.price);
-              }
-              //计算多选近效期
-              if(product.overdue) hasOverdue++;
-
-            }
-          });
-          if(hasOverdue>0) this.list.data.CountSpxq++;
-        });
-
-        ////计算已选择商品数
-        var checkNum = 0;
-        this.productList.forEach((ele, i) => {
-          if (ele.canBuy && !ele.isSelect) checkNum++;
-        });
-        this.list.data.ProductCountSelect += checkNum;
-
-        this.productList.forEach((ele, i) => {
-          if (ele.canBuy) {
-            ele.isSelect = true;
-            obj[ele.id] = true;
-          }
-          ele.sellerJson1.forEach((item, i) => {
-            if (item && item.prevSelected) {
-              item.selected = true;
-            }
-          });
-        });
-      }
-      //发送所有商品是否选中数据
-      var str = "";
-      for (var key in obj) {
-        str += key + ":";
-        str += obj[key] + ",";
-      }
-      if(str == "") return;
-      this.$http.post(this.url+"PurchasePlanSetisSelect", {
-          data: str
-        }).then(res => {
-          if(!res.data.success){
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myToast(res.data.info);
-            }
-          }
-        }).catch(err => {
-          this.myToast("网络错误,请重试!");
-        });
-    },
     //点击单个checkbox,判断是否要√上全选或者取消√全选,并取消或者选中商品的勾选
-    selectOne(e, ind) {
-      this.productList[ind].isSelect = e.target.checked;
-      if (e.target.checked) {
-        //勾选上
-        //重新勾选上次选中的商品
-        var productIndex = null,
-          price = null,
-          stock = null,  //库存
-          bargain = null,
-          buyCount = this.productList[ind].BuyCount;
-
-        var len = this.productList[ind].sellerJson1.length;
-        for (var i = 0; i < len; i++) {
-          if (this.productList[ind].sellerJson1[i] &&this.productList[ind].sellerJson1[i].prevSelected){
-            this.productList[ind].sellerJson1[i].selected = true;
-            
-            // console.log("勾选成功");
-            // console.log(this.productList[ind].sellerJson1[i].selected);
-            productIndex = i;
-            price = this.productList[ind].sellerJson1[i].price;
-            stock = this.productList[ind].sellerJson1[i].stock;
-            bargain = this.productList[ind].sellerJson1[i].bargain;
-          }
-          //sellerJson1中的buyCount >0 为多选商品 小计计算
-          if(this.productList[ind].sellerJson1[i]&&this.productList[ind].sellerJson1[i].buyCount>0){
-            //console.log('商品的下标为'+i+'buyCount为'+this.productList[ind].sellerJson1[i].buyCount);
-            this.list.data.purchasingCompanyList[i].Total += (this.productList[ind].sellerJson1[i].price * this.productList[ind].sellerJson1[i].buyCount);
-          }
-
-        }
-        
-        //没有上次勾选的商品
-        var IsMatchJxq=this.list.data.IsMatchJxq,
-            IsMatchNotStock=this.list.data.IsMatchNotStock;
-        
-        if(productIndex==null){
-          //console.log("没有上次勾选的商品")
-          for(var k=0,minPrice=999999;k<len;k++){
-            if(this.productList[ind].sellerJson1[k] && this.productList[ind].sellerJson1[k].canSelect){ 
-              //console.log('有商品')
-              if(IsMatchJxq && IsMatchNotStock && this.productList[ind].sellerJson1[k].price<minPrice) {
-                minPrice=this.productList[ind].sellerJson1[k].price;
-                productIndex = k;
-                price = this.productList[ind].sellerJson1[k].price;
-                stock = this.productList[ind].sellerJson1[k].stock;
-              }else if(!IsMatchJxq && !IsMatchNotStock && !this.productList[ind].sellerJson1[k].overdue && this.productList[ind].sellerJson1[k].price<minPrice){
-                if(this.productList[ind].sellerJson1[k].stock>=buyCount){
-                  minPrice=this.productList[ind].sellerJson1[k].price;
-                  productIndex = k;
-                  price = this.productList[ind].sellerJson1[k].price;
-                  stock = this.productList[ind].sellerJson1[k].stock;
-                }
-                
-              }else if(IsMatchJxq  && !IsMatchNotStock  && this.productList[ind].sellerJson1[k].price<minPrice){
-                if(this.productList[ind].sellerJson1[k].stock>=buyCount){
-                  minPrice=this.productList[ind].sellerJson1[k].price;
-                  productIndex = k;
-                  price = this.productList[ind].sellerJson1[k].price;
-                  stock = this.productList[ind].sellerJson1[k].stock;
-                }
-              }else if(!IsMatchJxq && IsMatchNotStock && !this.productList[ind].sellerJson1[k].overdue && this.productList[ind].sellerJson1[k].price<minPrice){
-                  minPrice=this.productList[ind].sellerJson1[k].price;
-                  productIndex = k;
-                  price = this.productList[ind].sellerJson1[k].price;
-                  stock = this.productList[ind].sellerJson1[k].stock;
-              }
-
-            }
-            
-          }
-          //自动帮用户勾上之后
-          if(productIndex!=null){
-            //console.log(productIndex);
-            this.productList[ind].sellerJson1[productIndex].selected = true;
-            this.productList[ind].sellerJson1[productIndex].prevSelected = true;
-            this.$http.post(this.url+"PurchasePlanChangeStoreid", {
-              id: this.productList[ind].id,
-              storeid: this.list.data.purchasingCompanyList[productIndex].storeid,
-              bargain: this.productList[ind].sellerJson1[productIndex].bargain
-            }).then(res => {
-              if(!res.data.success){
-                if(res.data.info=="请先登录"){
-                  $('.loginConfirm').fadeIn();
-                }else{
-                  this.myToast(res.data.info);
-                }
-              }
-            }).catch(err => {
-              //console.log(err);
-              this.myConfirm("网络错误,请重试!");
-            });
-          }
-
-        }
-
-        //小计变化
-        if (productIndex != null) {
-          if(!this.productList[ind].openMultiple){
-            this.list.data.purchasingCompanyList[productIndex].Total += price * buyCount;
-          }
-          
-          //更新对比价格
-          this.productList[ind].Price=this.productList[ind].sellerJson1[productIndex].price;
-          //近效期数量变化
-          if (this.productList[ind].sellerJson1[productIndex].overdue && !this.productList[ind].openMultiple) {
-            this.list.data.CountSpxq++;
-          }else if(this.productList[ind].openMultiple){
-            var hasOverdue = 0;
-            this.productList[ind].sellerJson1.forEach((p,k)=>{
-              if(p && p.buyCount>0 && p.overdue){
-                hasOverdue++;
-              }
-            })
-            if(hasOverdue>0) this.list.data.CountSpxq++;
-          }
-          //计算节省金额
-          if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && !this.productList[ind].openMultiple){
-            var save = (this.productList[ind].HistoryPrice-(bargain||price))*buyCount;
-            this.list.data.SelectSavePriceAll +=save;
-            this.list.data.SelectPriceAll += (bargain||price)*buyCount;
-          }else if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && this.productList[ind].openMultiple){
-            this.productList[ind].sellerJson1.forEach((seller,sk)=>{
-                if(seller.buyCount > 0){
-                  var save = (this.productList[ind].HistoryPrice-(this.productList[ind].sellerJson1[sk].bargain||this.productList[ind].sellerJson1[sk].price))*this.productList[ind].sellerJson1[sk].buyCount;
-                  this.list.data.SelectSavePriceAll +=save;
-                  this.list.data.SelectPriceAll += this.productList[ind].sellerJson1[sk].buyCount*(this.productList[ind].sellerJson1[sk].bargain||this.productList[ind].sellerJson1[sk].price);
-                }
- 
-            })
-          }
-        }
-
-        //计算超库存
-        if (stock!=null && buyCount>stock && !this.productList[ind].openMultiple) {
-           this.list.data.CountPurchaseSock++;
-          this.productList[ind].outTop0=true;
-          this.productList[ind].outTop1=true;
-          //this.$set(this.productList,ind,this.productList[ind]);
-         // console.log(this.productList[ind]);
-        }
-        if(this.productList[ind].openMultiple && this.productList[ind].multipleOutTop){
-          this.list.data.CountPurchaseSock++;
-        }
-        //计算已选择商品数
-        this.list.data.ProductCountSelect++;
-      } else {
-        //取消勾选
-        //计算已选择商品数
-        this.list.data.ProductCountSelect--;
-        //超库存数
-        if ((this.productList[ind].outTop1 && !this.productList[ind].openMultiple) || (this.productList[ind].openMultiple && this.productList[ind].multipleOutTop)) {
-           this.list.data.CountPurchaseSock--;
-          this.productList[ind].outTop1 = false;
-          this.$set(this.productList,ind,this.productList[ind]);
-        }
-        var productIndex = null,
-          price = null,
-          bargain = null,
-          buyCount = this.productList[ind].BuyCount;
-        this.productList[ind].sellerJson1.forEach((ele, i) => {
-          if (ele && ele.selected) {
-            productIndex = i;
-            price = ele.price;
-            bargain = ele.bargain;
-            ele.prevSelected = true;
-            ele.selected = false;
-          } else if (ele) {
-            ele.prevSelected = false;
-          }
-          //buyCount > 0则为开启多选商品,计算多供应商商品小计变化
-          if(ele.buyCount>0){
-            this.list.data.purchasingCompanyList[i].Total -= ele.price*ele.buyCount;
-          }
-
-        });
-        //小计变化 小计减去当前购买数量*价格
-        if (productIndex != null) {
-          //未开启多选的商品
-          if(!this.productList[ind].openMultiple){ //小计
-              this.list.data.purchasingCompanyList[productIndex].Total -= price * buyCount;
-          }
-          //节省变化
-          if(!this.productList[ind].openMultiple && this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-            var save = (this.productList[ind].HistoryPrice-(bargain||price))*buyCount;
-            this.list.data.SelectSavePriceAll -=save;
-            this.list.data.SelectPriceAll -= (bargain||price) *buyCount;
-
-          }else if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice && this.productList[ind].openMultiple){
-            this.productList[ind].sellerJson1.forEach((seller,sk)=>{
-                if(seller.buyCount > 0){
-                  var save = (this.productList[ind].HistoryPrice-(this.productList[ind].sellerJson1[sk].bargain||this.productList[ind].sellerJson1[sk].price))*this.productList[ind].sellerJson1[sk].buyCount;
-                  this.list.data.SelectSavePriceAll -=save;
-                  this.list.data.SelectPriceAll -= this.productList[ind].sellerJson1[sk].buyCount*(this.productList[ind].sellerJson1[sk].bargain||this.productList[ind].sellerJson1[sk].price);
-                }
- 
-            })
-          }
-          
-          //近效期数量变化
-          if (this.productList[ind].sellerJson1[productIndex].overdue && !this.productList[ind].openMultiple) {
-            this.list.data.CountSpxq--;
-          }else if(this.productList[ind].openMultiple){
-            var hasOverdue = 0;
-            this.productList[ind].sellerJson1.forEach((p,k)=>{
-              if(p && p.buyCount>0 && p.overdue){
-                hasOverdue++;
-              }
-            })
-            if(hasOverdue>0)  this.list.data.CountSpxq--;
-          }
-          //计算节省金额
-          // if(this.productList[ind].HistoryPrice>0 && !this.productList[ind].wrongPrice){
-            
-          // }
-
-        }
-      }
-      //发送此商品是否选中的数据
-      var obj = {};
-      obj[this.productList[ind].id] = e.target.checked ? true : false;
-      var str = "";
-      for (var key in obj) {
-        str += key + ":";
-        str += obj[key] + ",";
-      }
-      //console.log(str);
-      this.$http
-        .post(this.url+"PurchasePlanSetisSelect", {
-          data: str
-        })
-        .then(res => {
-          if(!res.data.success){
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myToast(res.data.info);
-            }
-          }
-        })
-        .catch(err => {
-          this.myToast("网络错误,请重试!");
-        });
-
-      for ( var i = 0, canBuy = 0, selected = 0;i < this.productList.length;i++) {
-        if (this.productList[i].canBuy) {
-          canBuy++;
-          if (this.productList[i].isSelect) selected++;
-        }
-      }
-      //console.log(canBuy,selected);
-      this.checkall = canBuy == selected ? true : false;
-    },
     //导入计划
     upLoad(e) {
       //console.log(e.target.files)
@@ -2881,95 +2327,6 @@ export default {
       }
       e.currentTarget.dataset.num = num * -1;
     },
-    //药企取消匹配
-    cancelMatch(index) {
-      this.list.data.purchasingCompanyList[index].Enabled = false;
-      //商品列表中index一列商品取消勾选
-      // this.productList.forEach((ele, i) => {
-      //   if (ele.sellerJson1[index]) {
-      //     if (ele.sellerJson1[index].selected) {
-      //       ele.isSelect = false;
-      //       this.list.data.ProductCountSelect--;
-      //       // this.list.data.purchasingCompanyList[index].Total=0;
-      //     }
-      //     ele.sellerJson1[index].selected = false;
-      //     ele.sellerJson1[index].prevSelected = false;
-      //     ele.sellerJson1[index].canSelect = false;
-      //     //改变此商品列的canBuy值,如果所有商品都无法选择,则改为false
-      //     var canSelectNum=0;
-      //     ele.sellerJson1.forEach((seller,i)=>{
-      //       if(seller && seller.canSelect) canSelectNum++;
-      //     })
-      //     if(canSelectNum==0) ele.canBuy=false;
-      //   }
-      // });
-      this.list.data.purchasingCompanyList[index].Total = 0;
-      //向服务器发送数据,取消匹配
-      this.showLoading = true;
-      var params = new URLSearchParams();
-      params.append("id", this.id);
-      params.append(
-        "storeid",
-        this.list.data.purchasingCompanyList[index].storeid
-      );
-      params.append("Enabled", false);
-      this.$http
-        .post(this.url+"PurchasePlanSetMatching", params)
-        .then(res => {
-          if (res.data.success) {
-            // this.showLoading = false;
-            this.getData();
-          } else {
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myToast(res.data.info);
-            }
-            this.showLoading = false;
-          }
-        })
-        .catch(err => {
-          this.showLoading = false;
-          this.myConfirm("网络错误,请重试!");
-        });
-    },
-    //药企启用匹配
-    startMatch(index) {
-      this.list.data.purchasingCompanyList[index].Enabled = true;
-      this.productList.forEach((ele, i) => {
-        if (ele.sellerJson1[index]) {
-          ele.sellerJson1[index].canSelect = true;
-        }
-      });
-      //向服务器发送数据
-      this.showLoading = true;
-      var params = new URLSearchParams();
-      params.append("id", this.id);
-      params.append(
-        "storeid",
-        this.list.data.purchasingCompanyList[index].storeid
-      );
-      params.append("Enabled", true);
-      this.$http
-        .post(this.url+"PurchasePlanSetMatching", params)
-        .then(res => {
-          if (!res.data.success) {
-            if(res.data.info=="请先登录"){
-              $('.loginConfirm').fadeIn();
-            }else{
-              this.myToast(res.data.info);
-            }
-            this.showLoading = false;
-          } else {
-            this.getData();
-          }
-        })
-        .catch(err => {
-          //console.log(err);
-          this.showLoading = false;
-          this.myToast("网络错误,请重试!");
-        });
-    },
     //计划内搜索
     planSearch() {
       this.showLoading = true;
@@ -3029,6 +2386,7 @@ export default {
     //确定刷新
     goRefresh() {
       $(".refreshConfirm").fadeOut();
+      this.pageIndex = 1;
       this.showLoading = true;
       this.$http
         .post(this.url+"PurchaseEditRefresh", {
@@ -3093,22 +2451,31 @@ export default {
     },
     //是否显示可采
     changeShowCanBuy(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示超库存
     changeOverStock(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示近效期
     changePurchaseSpxq(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //是否显示价格变化
     changePriceChange(e) {
+      this.pageIndex = 1;
       this.getData();
     },
     //添加店铺匹配
     addStore() {
+      
+      this.pageIndex = 1;
+
+      $('#addStore').modal('show');
+
       var params = new URLSearchParams();
       this.$http
         .post(this.url+"VendorAddSelectAllList",params)
@@ -3496,7 +2863,7 @@ export default {
         params.append("id", this.productList[ind].id);
         params.append("BuyCount", this.productList[ind].BuyCount);
         this.$http.post(this.url+'PurchasePlanModifyBuyCount',params).then(res=>{
-          console.log(res)
+          // console.log(res)
         }).catch(err=>{
           this.myConfirm("网络错误,请重试!");
         })
@@ -3741,6 +3108,333 @@ export default {
     trChangeIndex(ind){
       this.nowTrIndex = ind;
     },
+    midChange(ind,e){
+      var count = this.productList[ind].BuyCount;
+      var mid = this.productList[ind].Goods_Pcs_Small;
+      var single = count%mid;
+      var ce = 0;
+      if(single>0){
+         ce = mid - (single);
+      }
+     
+      count+=ce;
+      this.productList[ind].BuyCount = count;
+      // console.log(count);
+      $(e.target).parent().find('input').val(count);
+
+
+
+      var prevBuyCount=this.productList[ind].BuyCount0;
+      var val = count;
+      // console.log(val);
+      if (isNaN(val) || val <= 0) {
+        val = 1;
+        //this.productList[ind].isSelect=false;
+      }
+      this.productList[ind].BuyCount = val;
+      this.$set(this.productList,ind,this.productList[ind]);
+
+      //计算超库存
+      var price = null, //选中的商品的价格 供计算小计使用
+        pIndex = null; //选中商品对应的药企的下标 供计算小计使用
+      this.productList[ind].sellerJson1.forEach((ele, i) => {
+        if (ele && ele.selected) {
+          price = ele.price;
+          pIndex = i;
+          var stock = ele.stock; //选中商家的库存数量
+          if (val > stock && !this.productList[ind].outTop1) {
+            //如果修改后的数量大于选中商品的库存且之前没有超库存
+            this.productList[ind].outTop0 = true;
+            this.productList[ind].outTop1 = true;
+            this.list.data.CountPurchaseSock++;
+          } else if (
+            this.productList[ind].outTop1 &&
+            this.productList[ind].isSelect &&
+            val <= stock
+          ) {
+            this.productList[ind].outTop0 = false;
+            this.productList[ind].outTop1 = false;
+            this.list.data.CountPurchaseSock--;
+          }
+          //计算节省金额
+          if(this.productList[ind].HistoryPrice>0){
+            //当修改后的购买数量大于之前的购买数量
+            if(val>prevBuyCount){
+              var save= (val-prevBuyCount)*(this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll +=save;
+              this.list.data.SelectPriceAll += (val-prevBuyCount)*price;
+            }else if(val<prevBuyCount){
+              var save= (prevBuyCount - val) * (this.productList[ind].HistoryPrice - price);
+              this.list.data.SelectSavePriceAll -= save;
+              this.list.data.SelectPriceAll -= (prevBuyCount - val)*price;
+            }
+          
+          }
+
+        }
+      });
+
+      //计算小计
+      var buyCount0 = this.productList[ind].BuyCount0; //上次的购买数量
+      if (this.productList[ind].isSelect) {
+        if (val > buyCount0) {
+          //增加
+          var ce = val - buyCount0; //差额
+          this.list.data.purchasingCompanyList[pIndex].Total += ce * price;
+          this.productList[ind].BuyCount0 = val;
+        } else if (val < buyCount0) {
+          //减少
+          var ce = buyCount0 - val;
+          this.list.data.purchasingCompanyList[pIndex].Total -= ce * price;
+          this.productList[ind].BuyCount0 = val;
+        }
+      } else {
+        this.productList[ind].BuyCount0 = val;
+      }
+
+      //向服务器发送数据
+      this.$http
+        .post(this.url+"PurchasePlanModifyBuyCount", {
+          id: this.productList[ind].id,
+          BuyCount: val
+        })
+        .then(res => {
+          if(!res.data.success){
+            if(res.data.info=="请先登录"){
+              $('.loginConfirm').fadeIn();
+            }else{
+              this.myToast(res.data.info);
+            }
+          }
+        })
+        .catch(err => {
+          //console.log(err);
+          this.myToast("网络错误,请重试!");
+        });
+
+
+
+    },
+    closeOffline(){
+      this.offlineModalData = [];
+      $('.offlineModal').hide();
+    },
+    getOfflineTotal(store_Id){
+      var str = "¥";
+      for(var i = 0; i<this.list.data.purchasingCompanyListAll.length; i++){
+        if(this.list.data.purchasingCompanyList[i] && this.list.data.purchasingCompanyList[i].storeid == store_Id){
+          str += this.list.data.purchasingCompanyList[i].Total.toFixed(2);
+          break;
+        }else if(this.list.data.purchasingCompanyListAll[i].storeid == store_Id){
+          str += this.list.data.purchasingCompanyListAll[i].Total.toFixed(2);
+          break;
+        }
+      }
+      return str;
+
+    },
+    getIsOffline(store_Id){
+      for(var i = 0; i<this.list.data.purchasingCompanyListAll.length; i++){
+        if(this.list.data.purchasingCompanyListAll[i].storeid == store_Id){
+          return this.list.data.purchasingCompanyListAll[i].isOnline;
+        }
+      }
+
+    },
+    getOfflineDate(date){
+      if (date.length>2) {
+        date = new Date(Date.parse((date).replace(/-/g,'/')));
+        date = date.toLocaleDateString();
+        var dayIndex=date.indexOf('日');
+        if(dayIndex!=-1){
+          date=date.replace(/[\u4e00-\u9fa5]/g,'/').slice(0,dayIndex);
+        }
+      } else {
+        date = "-";
+      }
+      if(date=="Invalid Date"){
+        date="-";
+      }
+
+      return date;
+
+    },
+    //线下模态框供应商选择提交
+    offlinePost(){
+
+      this.offlineModalData = [];
+      $('.offlineModal').hide();
+    },
+    offlineSelect(storeid){
+      var selectedStoreid = null;
+      var index = Number($('.offlineModal .post').data('index')),  //productList 下标
+          key   = Number($('.offlineModal .post').data('key')),    //purchasingCompanyList 下标
+          prevStoreid = null,
+          prevPrice = 0,
+          bargain = 0,
+          remarks = "";
+
+      var buyCount = this.productList[index].BuyCount,
+          price = 0,
+          companyName = "",
+          chooseKey = null;
+
+       this.offlineModalData.forEach((item,ind)=>{
+        if(item.selected){
+          prevStoreid = item.storeid;
+          prevPrice = item.price;
+        }
+         item.selected = false;
+         if(item.storeid == storeid){
+
+           item.selected = true;
+           selectedStoreid = item.storeid;
+           price = item.price;
+           companyName =  item.CompanyName;
+           bargain = item.bargain;
+           remarks = item.Remarks;
+
+         }
+       })
+
+       //减去上次选中线下
+      if(prevStoreid != null){
+        this.list.data.purchasingCompanyListAll.forEach((item,ind)=>{
+          if(item.storeid == prevStoreid){
+            item.Total -= (buyCount*prevPrice);
+          } 
+        })
+      }
+
+       this.list.data.purchasingCompanyList.forEach((ele,i)=>{
+         if(selectedStoreid == ele.storeid){
+           chooseKey = i;
+         }
+       })
+
+      if(selectedStoreid<0){             //店铺id小于0,线下店铺
+        
+        for(var i =0;i<this.productList[index].sellerJson1.length;i++){
+          var item = this.productList[index].sellerJson1[i];
+          if( item && item.selected){     //减去之前选中的商品
+            //计算近效期
+            if (item.overdue && item.storeid>0) {       
+              //之前选中的商品是近效期
+               this.list.data.CountSpxq--;       
+            } else if(!item.overdue && item.storeid>0) {
+              this.list.data.CountSpxq++;
+            }
+
+            // 计算节省金额 (减去之前的节约金额)
+            if(this.productList[index].HistoryPrice>0 && !this.productList[index].wrongPrice){
+              var preSave= buyCount*(this.productList[index].HistoryPrice - (item.bargain || item.price));
+              this.list.data.SelectSavePriceAll -=preSave;
+              this.list.data.SelectPriceAll -= buyCount * (item.bargain || item.price);
+            }
+
+            //异常价格
+           if(price >= this.productList[index].HistoryPrice * 2 || this.productList[index].HistoryPrice >= price*2){
+             this.productList[index].wrongPrice = true;
+           }else{
+             this.productList[index].wrongPrice = false;
+           }
+             
+            
+
+            this.list.data.purchasingCompanyList[i].Total -= (item.price * buyCount);
+            item.selected = false;
+
+          }
+          if(item && item.storeid == 0){  
+            
+            if(!item.selected){  //之前线下未选中
+              
+              this.list.data.purchasingCompanyList[key].Total += (price * buyCount);
+              this.list.data.purchasingCompanyListAll.forEach((ele,i)=>{
+                if(ele.storeid == selectedStoreid){
+                  ele.Total += (price * buyCount);
+                }
+              })
+ 
+              item.selected =true;
+            }else{               //之前线下已选中
+              this.list.data.purchasingCompanyList[key].Total -= (this.productList[index].sellerJson1[key].price * buyCount);
+              this.list.data.purchasingCompanyList[key].Total += (price * buyCount);
+            }
+            item.price = price;
+            item.CompanyName = companyName;
+            item.Remarks = remarks;
+            
+            
+          }
+
+        }
+
+        //超库存
+        if(this.productList[index].outTop1){
+          this.list.data.CountPurchaseSock--;
+          this.productList[index].outTop1 = false;
+        }
+
+        //加上现在的节约金额
+        if(this.productList[index].HistoryPrice>0 && !this.productList[index].wrongPrice){
+            console.log('加上现在的节约金额');
+            var nowSave = this.productList[ind].BuyCount*(this.productList[index].HistoryPrice - (bargain || price));
+            this.list.data.SelectSavePriceAll +=nowSave;
+            this.list.data.SelectPriceAll += this.productList[index].BuyCount * (bargain||price);
+
+        }
+
+        //向服务器发送数据选中的商品
+        this.$http.post(this.url+"PurchasePlanChangeStoreid", {
+            id: this.productList[index].id,
+            storeid: storeid,
+            bargain: 0
+          }).then(res => {
+            if(!res.data.success){
+              if(res.data.info=="请先登录"){
+                $('.loginConfirm').fadeIn();
+              }else{
+                this.myToast(res.data.info);
+              }
+            }
+          }).catch(err => {
+            //console.log(err);
+            this.myConfirm("网络错误,请重试!");
+          });
+        //向服务器发送此商品勾选
+        var obj = {},
+            str = "";
+        obj[this.productList[index].id] = true;
+        for (var a in obj) {
+          str += a + ":";
+          str += obj[a];
+        }
+        var params = new URLSearchParams();
+        params.append("data", str);
+        this.$http
+          .post(this.url+"PurchasePlanSetisSelect", params)
+          .then(res => {
+            if (!res.data.success) {
+              this.myConfirm(res.data.info);
+            }
+          })
+          .catch(err => {
+            this.myToast("网络错误,请重试!");
+          });
+
+
+
+      }else if(selectedStoreid>0){     //店铺id大于0,线上店铺
+
+        this.productList[index].sellerJson1[chooseKey].selected?'':this.product_choose(index, chooseKey, buyCount, price);
+        
+
+      }
+
+
+    },
+    //切换是否分页
     IsPage(e){
       var isPage = $(e.target).val();
       var params = new URLSearchParams();
@@ -3815,6 +3509,66 @@ export default {
         return num;
       }
     },
+    //点击复制ERP编号
+    copyPSN(val){
+      var Input = document.createElement('input');
+      Input.value = val;
+      document.body.appendChild(Input);
+      Input.select();
+      document.execCommand('Copy');
+      document.body.removeChild(Input);
+      this.myToast('ERP编号复制成功!');
+    },
+    preferenceBtn(){
+      this.showCGPH=true;
+      $('#cg_preference').modal('show');
+    },
+    //关闭自定义表头
+    closeCustom(){
+      this.showCustomModal = false;
+    },
+    //自定义按钮
+    customBtn(){
+      this.showCustomModal = true;
+    },
+    //自定义表头设置模态框中选择去全部字段
+    checkCustomAll(e){
+      // var hasChecked = 0;
+      $('.customModal .inner input').each((i,ele)=>{
+        if(e.target.checked){
+          $(ele).prop('checked',true);
+          // hasChecked++;
+        }else{
+          $(ele).prop('checked',false);
+        } 
+      })
+      // this.customCheckedCount = hasChecked;
+
+    },
+    //自定义表头模态框确定
+    confirmCustom(){
+      //自定义字段
+      $('.customModal .inner .customTable input').each((i,ele)=>{
+        var $input = $(ele);
+        this.list.data.ExceptionField[i].show  = localStorage[this.id + $input.val()] = $input.prop('checked');
+      })
+
+      //参考字段
+      localStorage[ this.id + 'showStock'] = this.showStock =  Number($('.customModal .inner .referTableContent input:eq(0)').prop('checked'));
+      localStorage[ this.id + 'showMonthlySales'] = this.showMonthlySales =  Number($('.customModal .inner .referTableContent input:eq(1)').prop('checked'));
+      localStorage[ this.id + 'showPrice'] = this.showPrice = Number($('.customModal .inner .referTableContent input:eq(2)').prop('checked'));
+
+      var hasChecked = 0;
+      $('.customModal .inner input').each((i,ele)=>{
+        if( $(ele).prop('checked') ){
+          hasChecked++;
+        }
+      })
+      this.customCheckedCount = hasChecked;
+
+      this.showCustomModal = false;
+
+    }
 
 
   },
@@ -3822,6 +3576,36 @@ export default {
     //仅显示可采checkbox切换
     list(nVal) {
       this.productList = nVal.data.productList;
+
+      //修改自定义表头数据
+      this.customCheckedCount = 0;
+      if(nVal.data.ExceptionField){
+        var arr = nVal.data.ExceptionField.slice(0);
+        nVal.data.ExceptionField = [];
+        for(var customItem of arr){
+          var obj = {};
+          obj.customName =customItem;
+          obj.show = true;      //默认显示,如果H5本地存储中保存有值,则替换为本地值
+          // localStorage[this.id+customItem] == undefined ? '' : ( localStorage[this.id+customItem]==='true'? obj.show=true: obj.show=false );
+          
+          if(localStorage[this.id+customItem] == undefined){
+            localStorage[this.id+customItem] = true;
+          }
+          if(localStorage[this.id+customItem] != undefined){
+
+            if(localStorage[this.id+customItem]==='true'){
+              obj.show=true;
+              this.customCheckedCount++;
+            }else if(localStorage[this.id+customItem]==='false'){
+              obj.show=false;
+            }
+
+          }
+
+          nVal.data.ExceptionField.push(obj);
+        }
+      }
+      
       //最大值和最小值
       this.productList.forEach((ele,index)=>{
         ele.maxPrice=(Math.max.apply(Math, ele.sellerJson1.map(function(o) {return o.price})));
@@ -3837,6 +3621,23 @@ export default {
         }
 
       })
+
+      //读取本地是否显示库存信息
+      if(localStorage[ this.id + 'showStock'] != undefined){
+        this.showStock = Number(localStorage[ this.id + 'showStock']);
+      }
+      if(localStorage[ this.id + 'showMonthlySales'] != undefined){
+        this.showMonthlySales = Number(localStorage[ this.id + 'showMonthlySales']);
+      }
+      if(localStorage[ this.id + 'showPrice'] != undefined){
+        this.showPrice = Number(localStorage[ this.id + 'showPrice']);
+      }
+
+      this.showStock>0?this.customCheckedCount++:'';
+      this.showMonthlySales>0?this.customCheckedCount++:'';
+      this.showPrice>0?this.customCheckedCount++:'';
+
+
       //重新计算productList,使其sellerJson1数组长度等于商家个数
       var time = new Date();
       time.setFullYear(time.getFullYear() + 1);
@@ -3878,11 +3679,13 @@ export default {
             }
             if (productId == companyId) {
               ele.sellerJson1[j].canSelect = canSelect;
+             
               output[i] = ele.sellerJson1[j];
               output[i].prevSelected = output[i].selected ? true : false;
-              // if(output[i].selected){
-              //   output[i].buyCount = output[i].stock;
-              // }
+              output[i].ismidpacking = this.list.data.purchasingCompanyList[i].ismidpacking;
+              if(output[i].selected){
+                ele.Goods_Pcs_Small =output[i].ismidpacking ? output[i].Goods_Pcs_Small : 1;
+              }
               if (!ele.isSelect) output[i].selected = false; //如果商品列的checkbox未选中,那么对应企业的药品也不能选中
               //库存为0标识线下商品
               if (output[i].stock == 0) output[i].offline = true;
@@ -3905,7 +3708,8 @@ export default {
         ele.sellerJson1 = output;
         //判断canbuy
         for(var k=0,canBuy=0,multiple=0;k<ele.sellerJson1.length;k++){
-          if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled) canBuy++;
+          if(ele.sellerJson1[k]!=undefined && this.list.data.purchasingCompanyList[k].Enabled && ele.sellerJson1[k].storeid != 0) canBuy++;
+          if(ele.sellerJson1[k]!=undefined && ele.sellerJson1[k].storeid == 0) canBuy += ele.sellerJson1[k].OfflineSupplierCount;
           if(ele.sellerJson1[k]!=undefined && ele.sellerJson1[k].buyCount>0) multiple++;
         }
         ele.canBuy = canBuy > 0 ? true : false;
@@ -3922,7 +3726,13 @@ export default {
         
 
       });
-      //console.log(this.productList);
+      
+      // console.log(this.productList);
+    },
+    offlineModalData(nVal){
+      if(nVal.length>0){
+        $('.offlineModal').show();
+      }
     }
   },
   computed: {
@@ -3964,12 +3774,15 @@ export default {
       return this.list.data.purchasingCompanyList.filter((item)=>{
         return item.storeid>0;
       })
-    }
+    },
+    //自定义表头模态框已选字段数量
+
+
   }
 };
 </script>
 
-<style scoped lang="less">
+<style lang="less">
 @media (min-width: 992px) {
   .modal-big,
   .container{
@@ -3994,14 +3807,6 @@ export default {
     width: 1600-30px;
   }
 }
-
-.mytran-transition{
-  transition: all 0.5s linear;
-}
-.mytran-enter,.mytran-leave{
-  width:0;
-}
-
 
 .header_bg {
   background-color: rgb(60, 141, 188);
@@ -4101,6 +3906,19 @@ export default {
         }
       }
       > .shortcut {
+        i{
+          font-style: normal;
+          font-size: 12px;
+        }
+        >.fa-pencil-square-o{
+          position:relative;
+          >span{
+            position: absolute;
+            top:-10px;
+            right:-4px;
+            background-color: #f39c12 !important;
+          }
+        }
         > .upload {
           position: relative;
           > input[type="file"] {
@@ -4113,6 +3931,19 @@ export default {
             left: 0;
             margin: auto;
             opacity: 0;
+          }
+        }
+        >.pageTurn{
+          height:60px;
+          padding:10px;
+        }
+        >.fa-plus{
+           position:relative;
+          >span{
+            position: absolute;
+            top:-10px;
+            right:-4px;
+            background-color: #00C1F4 !important;
           }
         }
       }
@@ -4285,6 +4116,9 @@ export default {
             border-bottom-color: transparent;
           }
         }
+        th.custom{
+          width:92px;
+        }
       }
       > .product_container {
         table-layout: fixed;
@@ -4327,6 +4161,9 @@ export default {
               z-index: 99;
               &.nowTrIndex{
                 background-color: #f5f5f5;
+              }
+              >input{
+                cursor:pointer;
               }
               >.fa-window-close{
                 color: #ddd;
@@ -4394,6 +4231,17 @@ export default {
                   background-color: rgba(0, 0, 0, 0.1);
                   font-size: 12px;
               }
+              >.psn{
+                  color:#fff;
+                  background-color: #999;
+                  padding:0 4px;
+                  position: absolute;
+                  left:0;
+                  bottom:0;
+                  background-color: rgba(0, 0, 0, 0.1);
+                  font-size: 12px;
+                  cursor: pointer;
+              }
               
             }
             &:nth-child(3) {
@@ -4446,19 +4294,24 @@ export default {
               &.fixed{
                 box-shadow: 6px 0px 10px rgba(0,0,0,.35);
               }
-              > input {
+               input {
                 background-color: #fff;
                 text-align: center;
                 &.out_top {
-                  color: red;
-                  border-color: red;
+                  color: red !important;
+                  border-color: red !important;
+                }
+                &.mid{
+                  color:#F39C12;
+                  border-color:#F39C12;
                 }
               }
-              >button.open{
-                position:absolute;
-                bottom:0;
-                left:10px;
+              button.open{
+                // position:absolute;
+                // bottom:0;
+                // left:10px;
                 border-radius: 0;
+                z-index: 666;
               }
               >button.opened,>button.stop{
                 position:absolute;
@@ -4469,6 +4322,9 @@ export default {
               // &:hover .open{
               //   display: block;
               // }
+            }
+            &.custom{
+              width:92px;
             }
             &.td_supplier {
               position: relative;
@@ -4547,6 +4403,9 @@ export default {
                     color: #999;
                     font-size: 12px;
                     margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                     &:first-child {
                       margin: 4px 0;
                     }
@@ -4696,6 +4555,124 @@ export default {
     }
   }
 }
+.offlineModal {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  > .offlineBody {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    width: 940px;
+    height: 420px;
+    background-color: #fff;
+    border-radius: 10px;
+    > .title {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid #ddd;
+      > .rf {
+        cursor: pointer;
+      }
+    }
+    > .offlineContent {
+      border-bottom: 1px solid #ddd;
+      height:320px;
+      overflow: auto;
+      >ul{
+        padding:10px;
+        &:after{
+          display: block;
+          content:'';
+          clear: both;
+        }
+        >li{
+          float:left;
+          width:100px;
+          height:100px;
+          border:1px solid #ddd;
+          text-align: right;
+          margin-bottom:20px;
+          >p{
+            margin: 0;
+            white-space: nowrap;  
+            text-overflow:ellipsis; 
+            overflow:hidden;
+            height:18px;
+            line-height: 18x;
+            &.companyName{
+              color:#999;
+              font-size:12px;
+            }
+            &.total{
+              background-color:rgb(252, 248, 227);
+              font-size:12px;
+            }
+            &.online{
+              background-color:rgb(218, 237, 247) !important;
+            }
+          }
+          >.info{
+            height:64px;
+            padding-right:14px;
+            color:#999;
+            position: relative;
+            cursor: pointer;
+            &.selected{
+              background-color:#dff0d8;
+            }
+            >p{
+              margin:0;
+              white-space: nowrap;  
+              text-overflow:ellipsis; 
+              overflow:hidden;
+              &.price{
+                font-size: 16px;
+                color:#000;
+              }
+              &.stock{
+                font-size: 12px;
+              }
+              &.spxq{
+                font-size: 12px;
+              }
+            }
+            >.icon{
+              position:absolute;
+              top:0;
+              right:0;
+              border:10px solid #5cb85c;
+              border-left-color:transparent;
+              border-bottom-color:transparent;
+              color:#fff;
+              >span{
+                position:absolute;
+                top:-12px;
+                right: -10px;
+              }
+            }
+          }
+        }
+      }
+    }
+    > .offlineFooter {
+      position:absolute;
+      bottom:0;
+      width:100%;
+      padding: 0 15px;
+      text-align: right;
+      height: 60px;
+      line-height: 60px;
+    }
+  }
+}
 .branchesModal {
   position: fixed;
   top: 0;
@@ -4804,6 +4781,7 @@ export default {
     bottom: 0;
     margin: auto;
     background-color: #fff;
+    border-radius: 10px;
     > .title {
       > span {
         cursor: pointer;
@@ -4841,5 +4819,64 @@ export default {
     }
   }
 }
-</style>
+.customModal {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  > .customBody {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    width: 650px;
+    height: 366px;
+    background-color: #fff;
+    border-radius: 10px;
+    > .title {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid #ddd;
+      > .rf {
+        cursor: pointer;
+      }
+    }
+    > .customContent {
+      overflow-y: auto;
+      height:256px;
+      padding:14px;
+      border-bottom:1px solid #ddd;
+      >.inner{
+        height:200px;
+        border:1px solid #ddd;
+        padding:14px;
+        label{
+          margin-right:20px;
+          font-weight: normal;
+        }
+        .titleLine{
+          border-bottom:1px solid #ddd;
+          color:#999;
+        }
+        >.customTable{
+          margin-bottom:16px;
+        }
 
+
+      }
+
+    }
+    > .customFooter {
+      padding: 0 15px;
+      text-align: right;
+      height: 60px;
+      line-height: 60px;
+    }
+  }
+}
+</style>

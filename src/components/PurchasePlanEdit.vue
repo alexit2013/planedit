@@ -150,7 +150,7 @@
         
         </div>
 
-        <div class="pageTurn text-right col-xs-12" v-if="list">
+        <div class="pageTurn text-right col-xs-12"  v-if="list">
           <p style="display:inline-block;vertical-align:top;">
             显示方式:
               <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
@@ -1579,8 +1579,6 @@ export default {
       var $this=$(e.target);
 
       scrollLeft=$this.scrollLeft();
-      // console.log('向右滚动距离'+scrollLeft);
-      // console.log('距离左侧距离'+$fixed_top.offset().left);
       if(scrollLeft>10){
         this.showShadow=true;
       }else{
@@ -1590,7 +1588,8 @@ export default {
         $fixed_top.css({
           position: "fixed",
           top: 0,
-          left:this.offsetLeft-scrollLeft
+          // left:this.offsetLeft-scrollLeft
+          left:$(".detail")[0].getBoundingClientRect().left
         });
         $box.addClass('helpFixed');
           
@@ -1602,6 +1601,12 @@ export default {
       }
     });
     
+    $(window).resize(()=>{
+      $fixed_top.css({
+          left:$(".detail")[0].getBoundingClientRect().left
+        });
+    })
+
     window.onbeforeunload=()=>{
       if(this.list.data.ExceptionField){
         for(var item of this.list.data.ExceptionField){
@@ -1686,7 +1691,7 @@ export default {
   updated() { 
     
     //console.log("已更新!")
-    this.offsetLeft = $(".fixed_top").offset().left;
+    // this.offsetLeft = $(".fixed_top").offset().left;
     //启用tooltip
     $("[data-toggle='tooltip']").tooltip();
     //启用popover
@@ -2008,6 +2013,11 @@ export default {
           this.list.data.SelectSavePriceAll -=save;
           this.list.data.SelectPriceAll -= this.productList[ind].BuyCount*(this.productList[ind].sellerJson1[key].bargain||this.productList[ind].sellerJson1[key].price);
         }
+
+        //修改sellerJsonValid
+        this.productList[ind].sellerJsonValid.forEach(function(ele,i){
+          ele.selected = false;
+        })
         
         //计算近效期
         if (this.productList[ind].sellerJson1[key].overdue)
@@ -2386,9 +2396,15 @@ export default {
         //向服务器发送数据
         this.multiplePost(id,storeid,BuyCount,bargain);
 
-      } else if( this.productList[ind].sellerJson1[key].storeid == 0 && this.productList[ind].isSelect && !this.productList[ind].openMultiple){
+      } else if( this.productList[ind].sellerJson1[key].storeid == 0  && !this.productList[ind].openMultiple){
         $('.offlineModal .post').data('index',ind).data('key',key);
-        this.offlineModalData = this.productList[ind].sellerJsonValid;
+         this.offlineModalData = this.productList[ind].sellerJsonValid;
+        if(!this.productList[ind].isSelect){
+          this.offlineModalData.forEach((valid,validKey)=>{
+            valid.selected = false;
+          })
+        }
+       
       }else if(this.productList[ind].sellerJson1[key].storeid == 0 && this.productList[ind].isSelect && this.productList[ind].openMultiple){
         this.myToast("已开启线上多选,无法选择线下供应商!");
       }
@@ -2596,8 +2612,13 @@ export default {
       var obj = {};
       //取消勾选
       if (!e.target.checked) {
+        //计算已选择商品数
+        var checkNum = 0;
         //计算小计
         this.productList.forEach((item, ind) => {
+          if(item.isSelect){
+            checkNum++;
+          }
           var buyCount = item.BuyCount;
           var hasOverdue = 0; //多选状态下近效期
           item.sellerJson1.forEach((product, index) => {
@@ -2652,11 +2673,10 @@ export default {
         // this.list.data.SelectSavePriceAll = 0;
         // this.list.data.SelectPriceAll = 0;
 
-        //计算已选择商品数
-        var checkNum = 0;
-        this.productList.forEach((ele, i) => {
-          if (ele.isSelect) checkNum++;
-        });
+        
+        // this.productList.forEach((ele, i) => {
+        //   if (ele.isSelect) checkNum++;
+        // });
         this.list.data.ProductCountSelect -= checkNum;
 
         this.productList.forEach((ele, i) => {
@@ -2670,6 +2690,10 @@ export default {
             }
             item.selected = false;
           });
+          ele.sellerJsonValid.forEach((valid,validKey)=>{
+            valid.selected = false;
+          })
+
         });
       } else {
         this.productList.forEach((item, ind) => {
@@ -2717,22 +2741,31 @@ export default {
 
         ////计算已选择商品数
         var checkNum = 0;
-        this.productList.forEach((ele, i) => {
-          if (ele.canBuy && !ele.isSelect) checkNum++;
-        });
-        this.list.data.ProductCountSelect += checkNum;
-
+        // this.productList.forEach((ele, i) => {
+        //   if (ele.canBuy && !ele.isSelect) checkNum++;
+        // });
+        
         this.productList.forEach((ele, i) => {
           if (ele.canBuy) {
             ele.isSelect = true;
             obj[ele.id] = true;
           }
+          if (ele.canBuy && !ele.isSelect) {
+            checkNum++;
+          }
           ele.sellerJson1.forEach((item, i) => {
             if (item && item.prevSelected) {
               item.selected = true;
+              var validStoreid = item.storeid;
+              ele.sellerJsonValid.forEach((valid,validKey)=>{
+                if(valid.storeid == validStoreid){
+                  valid.selected = true;
+                }
+              })
             }
           });
         });
+        this.list.data.ProductCountSelect += checkNum;
       }
       //发送所有商品是否选中数据
       var str = "";
@@ -2765,14 +2798,14 @@ export default {
           price = null,
           stock = null,  //库存
           bargain = null,
-          buyCount = this.productList[ind].BuyCount;
+          buyCount = this.productList[ind].BuyCount,
+          storeid = null;
 
         var len = this.productList[ind].sellerJson1.length;
         for (var i = 0; i < len; i++) {
           if (this.productList[ind].sellerJson1[i] &&this.productList[ind].sellerJson1[i].prevSelected){
             this.productList[ind].sellerJson1[i].selected = true;
             
-            // console.log("勾选成功");
             // console.log(this.productList[ind].sellerJson1[i].selected);
             productIndex = i;
             price = this.productList[ind].sellerJson1[i].price;
@@ -2827,8 +2860,9 @@ export default {
             
           }
           //自动帮用户勾上之后
+
           if(productIndex!=null){
-            //console.log(productIndex);
+            // console.log(productIndex);
             this.productList[ind].sellerJson1[productIndex].selected = true;
             this.productList[ind].sellerJson1[productIndex].prevSelected = true;
             this.$http.post(this.url+"PurchasePlanChangeStoreid", {
@@ -2847,9 +2881,16 @@ export default {
               //console.log(err);
               this.myConfirm("网络错误,请重试!");
             });
+            
           }
 
         }
+
+        this.productList[ind].sellerJsonValid.forEach((ele,i)=>{
+          if(ele.storeid == this.productList[ind].sellerJson1[productIndex].storeid){
+            ele.selected = true;
+          }
+        })  
 
         //小计变化
         if (productIndex != null) {
@@ -2972,6 +3013,11 @@ export default {
           // }
 
         }
+
+        this.productList[ind].sellerJsonValid.forEach(function (ele,i) {
+          ele.selected = false;
+        })
+
       }
       //发送此商品是否选中的数据
       var obj = {};
@@ -4856,10 +4902,7 @@ export default {
             opacity: 0;
           }
         }
-        >.pageTurn{
-          height:60px;
-          padding:10px;
-        }
+        
         >.fa-plus{
            position:relative;
           >span{
@@ -4869,6 +4912,10 @@ export default {
             background-color: #00C1F4 !important;
           }
         }
+      }
+      >.pageTurn{
+        height:60px;
+        padding:10px;
       }
     }
     > .detail {
