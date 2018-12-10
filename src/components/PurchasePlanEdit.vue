@@ -4347,8 +4347,8 @@ export default {
 
         //加上现在的节约金额
         if(this.productList[index].HistoryPrice>0 && !this.productList[index].wrongPrice){
-            console.log('加上现在的节约金额');
-            var nowSave = this.productList[ind].BuyCount*(this.productList[index].HistoryPrice - (bargain || price));
+            //console.log('加上现在的节约金额');
+            var nowSave = this.productList[index].BuyCount*(this.productList[index].HistoryPrice - (bargain || price));
             this.list.data.SelectSavePriceAll +=nowSave;
             this.list.data.SelectPriceAll += this.productList[index].BuyCount * (bargain||price);
 
