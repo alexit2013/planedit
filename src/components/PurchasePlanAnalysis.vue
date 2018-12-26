@@ -132,6 +132,7 @@
         </div>
 
         <div class="pageTurn text-right col-xs-12" v-if="list">
+          
           <p style="display:inline-block;vertical-align:top;">
             显示方式:
               <select @change="IsPage($event)" class="form-control" style="display:inline;width:90px;">
@@ -906,6 +907,7 @@ export default {
     this.getData();
   },
   mounted() {
+    console.log("mounted");
 
     //屏幕高度的1/4
     this.halfScreenHeight = $(window).height()/4;
@@ -3568,6 +3570,10 @@ export default {
 
       this.showCustomModal = false;
 
+    },
+    //计算库存显示方式
+    calcStock(stock,buyCount){
+      return stock>1000?(buyCount>stock?stock:'库存充足'):stock;
     }
 
 
